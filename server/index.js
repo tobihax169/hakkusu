@@ -160,7 +160,7 @@ client.on('interactionCreate', async interaction => {
     const categoryId = supportChannel.parentId;
 
     const ticketChannel = await guild.channels.create({
-      name: `ticket-${ticketId}-${ticketInfo.customerName}`,
+      name: `${ticketId}-${ticketInfo.customerName}`,
       type: ChannelType.GuildText,
       parent: categoryId,
       reason: `Hỗ trợ khách hàng ${ticketInfo.customerName}`,
