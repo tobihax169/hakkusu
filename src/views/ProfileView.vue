@@ -11,7 +11,16 @@ const { token: authStateToken, clearAuth } = useAuth();
 const user = ref({
   name: '',
   email: '',
-  balance: 0
+  balance: 0,
+  avatar: '',
+  lastUsernameChange: null
+});
+
+const editState = ref({
+  isEditingName: false,
+  newName: '',
+  isEditingAvatar: false,
+  newAvatar: ''
 });
 
 const activeTab = ref('info'); // 'info', 'deposit'
@@ -45,6 +54,61 @@ onMounted(async () => {
   }
 });
 
+const updateAvatar = async () => {
+  if (!editState.value.newAvatar.trim()) return;
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/profile/avatar`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStateToken.value}`
+      },
+      body: JSON.stringify({ avatar: editState.value.newAvatar })
+    });
+    const data = await res.json();
+    if (data.success) {
+      user.value.avatar = data.avatar;
+      editState.value.isEditingAvatar = false;
+      addToast('Cập nhật avatar thành công', 'success');
+    } else {
+      addToast(data.message, 'error');
+    }
+  } catch (err) {
+    addToast('Lỗi kết nối', 'error');
+  }
+};
+
+const updateName = async () => {
+  if (editState.value.newName.trim().length < 3) {
+    addToast('Tên phải có ít nhất 3 ký tự', 'error');
+    return;
+  }
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/profile/username`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStateToken.value}`
+      },
+      body: JSON.stringify({ newName: editState.value.newName })
+    });
+    const data = await res.json();
+    if (data.success) {
+      user.value.name = data.name;
+      editState.value.isEditingName = false;
+      // update global auth state
+      localStorage.setItem('userName', data.name); 
+      // reload page to sync or just let composable handle it (but composable is reactive)
+      addToast('Cập nhật tên thành công', 'success');
+      setTimeout(()=> window.location.reload(), 1500);
+    } else {
+      addToast(data.message, 'error');
+    }
+  } catch (err) {
+    addToast('Lỗi kết nối', 'error');
+  }
+};
+
 const copySyntax = () => {
     navigator.clipboard.writeText(`NAP ${user.value.name}`);
     addToast('Đã copy cú pháp nạp!', 'success');
@@ -61,9 +125,21 @@ const copySyntax = () => {
       <div v-else class="profile-card glass">
         <!-- Sidebar -->
         <div class="profile-sidebar">
-          <div class="user-avatar">
-            <span class="avatar-text">{{ user.name.charAt(0).toUpperCase() }}</span>
+          <div class="user-avatar-wrapper" @click="editState.isEditingAvatar = !editState.isEditingAvatar">
+            <div class="user-avatar" :style="user.avatar ? `background-image: url('${user.avatar}'); background-size: cover; background-position: center;` : ''">
+              <span v-if="!user.avatar" class="avatar-text">{{ user.name.charAt(0).toUpperCase() }}</span>
+            </div>
+            <div class="avatar-overlay">🖼️ Đổi ảnh</div>
           </div>
+          
+          <div v-if="editState.isEditingAvatar" class="edit-avatar-box">
+            <input v-model="editState.newAvatar" type="text" placeholder="Nhập link ảnh (URL)..." class="custom-input" />
+            <div class="edit-actions mt-2">
+              <button @click="updateAvatar" class="btn-primary btn-sm">Lưu</button>
+              <button @click="editState.isEditingAvatar = false" class="btn-cancel btn-sm">Hủy</button>
+            </div>
+          </div>
+
           <h2 class="user-name">{{ user.name }}</h2>
           <p class="user-email text-muted">{{ user.email }}</p>
           
@@ -100,7 +176,21 @@ const copySyntax = () => {
             <h3>Hồ sơ cá nhân</h3>
             <div class="info-group">
               <label>Họ và tên</label>
-              <div class="info-value">{{ user.name }}</div>
+              
+              <div v-if="!editState.isEditingName" class="info-value d-flex-between">
+                <span>{{ user.name }}</span>
+                <button @click="editState.isEditingName = true; editState.newName = user.name" class="btn-edit">✏️ Thay đổi (7 ngày/lần)</button>
+              </div>
+
+              <div v-else class="edit-name-box">
+                <input v-model="editState.newName" type="text" class="custom-input w-100 mb-2" />
+                <div class="edit-actions">
+                  <button @click="updateName" class="btn-primary btn-sm">Lưu tên mới</button>
+                  <button @click="editState.isEditingName = false" class="btn-cancel btn-sm">Hủy</button>
+                </div>
+                <small class="text-warning mt-2 d-block">Lưu ý: Bạn chỉ được đổi tên 1 lần mỗi tuần.</small>
+              </div>
+
             </div>
             <div class="info-group">
               <label>Email đăng ký</label>
@@ -191,7 +281,6 @@ const copySyntax = () => {
 
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* Sidebar */
 .profile-sidebar {
   width: 300px;
   background: rgba(15, 23, 42, 0.5);
@@ -202,6 +291,12 @@ const copySyntax = () => {
   border-right: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+.user-avatar-wrapper {
+  position: relative;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
 .user-avatar {
   width: 100px;
   height: 100px;
@@ -210,8 +305,26 @@ const copySyntax = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 20px;
   box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+  overflow: hidden;
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.8rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.user-avatar-wrapper:hover .avatar-overlay {
+  opacity: 1;
 }
 
 .avatar-text {
@@ -292,6 +405,28 @@ const copySyntax = () => {
   border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.1);
 }
+.d-flex-between { display: flex; justify-content: space-between; align-items: center; }
+.d-block { display: block; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mt-2 { margin-top: 0.5rem; }
+
+.btn-edit {
+  background: none; border: none; color: var(--primary); font-size: 0.85rem; cursor: pointer;
+}
+.btn-edit:hover { text-decoration: underline; }
+
+.custom-input {
+  background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white;
+  padding: 10px; border-radius: 6px; width: 100%; font-family: inherit;
+}
+.custom-input:focus { border-color: var(--primary); outline: none; }
+
+.edit-actions { display: flex; gap: 10px; }
+.btn-sm { padding: 6px 12px; font-size: 0.9rem; border-radius: 6px; cursor: pointer; }
+.btn-cancel { background: transparent; color: white; border: 1px solid rgba(255,255,255,0.2); }
+.btn-cancel:hover { background: rgba(255,255,255,0.1); }
+
+.edit-avatar-box { width: 100%; margin-bottom: 20px; }
 
 /* Bank UI */
 .bank-card {

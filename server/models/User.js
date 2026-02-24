@@ -19,7 +19,17 @@ const userSchema = new mongoose.Schema({
   balance: {
     type: Number,
     default: 0
-  }
+  },
+  avatar: {
+    type: String,
+    default: ''
+  },
+  lastUsernameChange: {
+    type: Date,
+    default: null
+  },
+  resetPasswordToken: String,
+  resetPasswordExpires: Date
 }, { timestamps: true });
 
 // Hash password trước khi lưu

@@ -6,6 +6,7 @@ const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder
 const cors = require('cors');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('./models/User');
 
 const app = express();
@@ -104,6 +105,120 @@ app.get('/api/auth/me', async (req, res) => {
     res.json({ success: true, user });
   } catch (error) {
     res.status(401).json({ success: false, message: 'Token không hợp lệ hoặc đã hết hạn.' });
+  }
+});
+
+// -- CẬP NHẬT ẢNH ĐẠI DIỆN --
+app.put('/api/auth/profile/avatar', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ success: false, message: 'Xác thực thất bại' });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
+    const { avatar } = req.body;
+    
+    await User.findByIdAndUpdate(decoded.userId, { avatar });
+    res.json({ success: true, message: 'Cập nhật Avatar thành công!', avatar });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+  }
+});
+
+// -- ĐỔI TÊN NGƯỜI DÙNG (Giới hạn 7 ngày / lần) --
+app.put('/api/auth/profile/username', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ success: false, message: 'Xác thực thất bại' });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
+    const user = await User.findById(decoded.userId);
+    
+    // Kiểm tra thời gian đổi lần cuối
+    if (user.lastUsernameChange) {
+      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+      const timeSinceLastChange = Date.now() - new Date(user.lastUsernameChange).getTime();
+      
+      if (timeSinceLastChange < SEVEN_DAYS) {
+        const daysLeft = Math.ceil((SEVEN_DAYS - timeSinceLastChange) / (1000 * 60 * 60 * 24));
+        return res.status(400).json({ 
+          success: false, 
+          message: `Bạn chỉ có thể đổi tên 7 ngày 1 lần. Vui lòng đợi ${daysLeft} ngày nữa.` 
+        });
+      }
+    }
+
+    const { newName } = req.body;
+    if (!newName || newName.trim().length < 3) {
+      return res.status(400).json({ success: false, message: 'Tên mới phải có nhất 3 ký tự' });
+    }
+
+    user.name = newName.trim();
+    user.lastUsernameChange = Date.now();
+    await user.save(); // không cần lo mật khẩu vì mình đã remove next() và có 'isModified'
+
+    res.json({ success: true, message: 'Đổi tên thành công!', name: user.name });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+  }
+});
+
+// -- QUÊN MẬT KHẨU --
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Email không tồn tại trong hệ thống.' });
+    }
+
+    // Tạo mã code 6 số ngẫu nhiên
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    user.resetPasswordToken = crypto.createHash('sha256').update(resetCode).digest('hex');
+    user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // Có mã trong 10 phút
+    await user.save();
+
+    // Trong thực tế, bạn gửi Email ở đây. Hiện tại ta cấu hình gửi vô kênh discord cho Supporter biết
+    const channel = await client.channels.fetch(SUPPORT_CHANNEL_ID);
+    await channel.send(`
+🚨 **YÊU CẦU LẤY LẠI MẬT KHẨU**
+- Khách hàng: ${user.name}
+- Email: ${user.email}
+- **Mã OTP cấp lại mật khẩu**: \`${resetCode}\`
+*(Hãy nhắn mã này cho khách qua tin nhắn hoặc support)*
+    `);
+
+    res.json({ success: true, message: 'Yêu cầu của bạn đã được tiếp nhận. Bộ phận chăm sóc khách hàng sẽ liên hệ cung cấp mã cho bạn hoặc kiểm tra email!' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Có lỗi xảy ra, thử lại sau.' });
+  }
+});
+
+// -- RESET PASSWORD --
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { email, code, newPassword } = req.body;
+
+    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
+    const user = await User.findOne({
+      email,
+      resetPasswordToken: hashedCode,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Mã xác nhận không hợp lệ hoặc đã hết hạn.' });
+    }
+
+    user.password = newPassword; // Middleware sẽ tự băm cái pwd mới này
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ success: true, message: 'Mật khẩu đã được đặt lại thành công!' });
+  } catch(error) {
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ.' });
   }
 });
 

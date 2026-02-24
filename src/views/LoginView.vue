@@ -60,6 +60,9 @@ const handleLogin = async () => {
           <div class="form-group">
             <label>Mật khẩu</label>
             <input v-model="formData.password" type="password" placeholder="••••••••" required />
+            <div class="text-right mt-2">
+              <router-link to="/forgot-password" class="forgot-link">Bạn quên mật khẩu?</router-link>
+            </div>
           </div>
 
           <div v-if="errorMessage" class="error-msg">
@@ -124,6 +127,21 @@ const handleLogin = async () => {
 
 .subtitle {
   color: var(--text-muted);
+}
+
+.text-right { text-align: right; }
+.mt-2 { margin-top: 8px; }
+
+.forgot-link {
+  font-size: 0.85rem;
+  color: var(--primary-light);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
+  color: var(--primary);
 }
 
 .form-group {
