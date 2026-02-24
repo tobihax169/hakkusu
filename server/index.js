@@ -91,6 +91,21 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Lấy thông tin tài khoản bao gồm số dư
+app.get('/api/auth/me', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ success: false, message: 'Không tìm thấy Token' });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
+    const user = await User.findById(decoded.userId).select('-password');
+    if (!user) return res.status(404).json({ success: false, message: 'Người dùng không tồn tại' });
+    
+    res.json({ success: true, user });
+  } catch (error) {
+    res.status(401).json({ success: false, message: 'Token không hợp lệ hoặc đã hết hạn.' });
+  }
+});
 
 // -- KHỞI TẠO DISCORD BOT --
 const client = new Client({ 
@@ -98,6 +113,7 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessageTyping,
   ] 
 });
 
@@ -234,6 +250,20 @@ client.on('messageCreate', async message => {
       authorName: message.author.username,
       text: message.content
     });
+  }
+});
+
+// Lắng nghe nhân viên đang gõ chữ trên Discord
+client.on('typingStart', async (typing) => {
+  if (typing.user?.bot) return;
+
+  for (const [ticketId, info] of activeTickets.entries()) {
+    if (info.channelId === typing.channel.id && info.status === 'active') {
+      io.to(info.socketId).emit('supporter_typing', {
+        supporterName: typing.user.username
+      });
+      break;
+    }
   }
 });
 

@@ -43,7 +43,9 @@ onMounted(() => {
           
           <div class="auth-buttons desktop-nav">
             <template v-if="userName">
-              <span class="btn-text">Xin chào, <strong>{{ userName }}</strong></span>
+              <router-link to="/profile" class="btn-text">
+                Xin chào, <strong style="color: #6366f1;">{{ userName }}</strong>
+              </router-link>
               <a href="#" @click.prevent="handleLogout" class="btn-primary btn-small" style="background: rgba(239, 68, 68, 0.8);">Đăng xuất</a>
             </template>
             <template v-else>

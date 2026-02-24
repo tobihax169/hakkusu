@@ -4,12 +4,16 @@ import { useRouter } from 'vue-router';
 
 // State
 import { io } from 'socket.io-client';
+import { useToast } from '../composables/useToast';
 
+const { addToast } = useToast();
 const router = useRouter();
 const isOpen = ref(false);
 const step = ref('login'); // 'login', 'waiting', 'chat'
 const customerName = ref('');
 const isLoggedIn = computed(() => !!localStorage.getItem('userName'));
+const isSupporterTyping = ref(false);
+let typingTimeout = null;
 
 const goToLogin = () => {
   closeChat();
@@ -47,6 +51,7 @@ const initSocket = () => {
 
     // Nhận tin nhắn từ Discord gửi về Web
     socket.on('receive_message', (data) => {
+      isSupporterTyping.value = false; // Tắt lúc nhận tin
       messages.value.push({
         id: data.id,
         sender: 'supporter', // Ai đó đang chat lại
@@ -54,6 +59,21 @@ const initSocket = () => {
         text: data.text
       });
       scrollToBottom();
+      
+      // Bật Toast Notifications nếu người dùng đang ẩn chat
+      if (!isOpen.value) {
+        addToast(`Tin nhắn mới từ ${data.authorName}`, 'info');
+      }
+    });
+    
+    // Nhận thông báo đang gõ
+    socket.on('supporter_typing', () => {
+      isSupporterTyping.value = true;
+      scrollToBottom();
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        isSupporterTyping.value = false;
+      }, 3000);
     });
 
     // Bị Đóng ticket từ Discord
@@ -195,6 +215,13 @@ const chatTitle = () => {
             <div v-else class="message-bubble">
               {{ msg.text }}
             </div>
+          </div>
+        </div>
+        
+        <!-- Hiệu ứng Typing -->
+        <div v-if="isSupporterTyping" class="message-wrapper">
+          <div class="typing-indicator">
+            <span></span><span></span><span></span>
           </div>
         </div>
         
@@ -485,5 +512,35 @@ const chatTitle = () => {
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+
+/* Hiệu ứng gõ chữ (..."typing") */
+.typing-indicator {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 12px 16px;
+  border-radius: 14px;
+  border-bottom-left-radius: 4px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  width: fit-content;
+  margin-top: 5px;
+}
+
+.typing-indicator span {
+  width: 6px;
+  height: 6px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  animation: typing 1.4s infinite ease-in-out both;
+}
+
+.typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+.typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0s; }
+
+@keyframes typing {
+  0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+  40% { transform: scale(1); opacity: 1; }
 }
 </style>
