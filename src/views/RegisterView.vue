@@ -1,8 +1,10 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useToast } from '../composables/useToast';
 
 const router = useRouter();
+const { addToast } = useToast();
 const formData = ref({
   name: '',
   email: '',
@@ -19,6 +21,7 @@ const handleRegister = async () => {
   
   if (formData.value.password !== formData.value.confirmPassword) {
     errorMessage.value = 'Mật khẩu xác nhận không khớp!';
+    addToast('Mật khẩu xác nhận không khớp!', 'error');
     return;
   }
   
@@ -37,15 +40,18 @@ const handleRegister = async () => {
     
     if (data.success) {
       successMessage.value = 'Đăng ký thành công! Hãy đăng nhập.';
+      addToast('Đăng ký thành công! Đang chuyển hướng...', 'success');
       setTimeout(() => {
         router.push('/login');
       }, 1500);
     } else {
       errorMessage.value = data.message;
+      addToast(data.message, 'error');
     }
   } catch (error) {
     console.error('Register error:', error);
     errorMessage.value = 'Không thể kết nối đến server.';
+    addToast('Không thể kết nối đến server.', 'error');
   }
 };
 </script>

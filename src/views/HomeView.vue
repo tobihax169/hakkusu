@@ -1,24 +1,18 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuth } from '../composables/useAuth'
 
 const router = useRouter()
 const isScrolled = ref(false)
-const userName = ref('')
+const { userName, clearAuth } = useAuth()
 
 const handleLogout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('userName')
-  userName.value = ''
+  clearAuth()
   router.push('/')
 }
 
 onMounted(() => {
-  // Check auth state
-  if (localStorage.getItem('userName')) {
-    userName.value = localStorage.getItem('userName')
-  }
-
   window.addEventListener('scroll', () => {
     isScrolled.value = window.scrollY > 20
   })

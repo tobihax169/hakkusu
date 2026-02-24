@@ -1,8 +1,12 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuth } from '../composables/useAuth';
+import { useToast } from '../composables/useToast';
 
 const router = useRouter();
+const { setAuth } = useAuth();
+const { addToast } = useToast();
 const formData = ref({
   email: '',
   password: ''
@@ -21,17 +25,17 @@ const handleLogin = async () => {
     const data = await response.json();
 
     if (data.success) {
-      // Lưu token vào localStorage
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('userName', data.user.name);
-      alert('Đăng nhập thành công!');
+      setAuth(data.token, data.user.name);
+      addToast('Đăng nhập thành công!', 'success');
       router.push('/');
     } else {
       errorMessage.value = data.message;
+      addToast(data.message, 'error');
     }
   } catch (error) {
     console.error('Login error:', error);
     errorMessage.value = 'Không thể kết nối đến server.';
+    addToast('Không thể kết nối đến server.', 'error');
   }
 };
 </script>

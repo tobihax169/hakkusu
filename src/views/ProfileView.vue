@@ -2,9 +2,11 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from '../composables/useToast';
+import { useAuth } from '../composables/useAuth';
 
 const router = useRouter();
 const { addToast } = useToast();
+const { token: authStateToken, clearAuth } = useAuth();
 
 const user = ref({
   name: '',
@@ -16,7 +18,7 @@ const activeTab = ref('info'); // 'info', 'deposit'
 const isLoading = ref(true);
 
 onMounted(async () => {
-  const token = localStorage.getItem('token');
+  const token = authStateToken.value;
   if (!token) {
     addToast('Vui lòng đăng nhập để truy cập!', 'error');
     router.push('/login');
@@ -32,8 +34,7 @@ onMounted(async () => {
     if (data.success) {
       user.value = data.user;
     } else {
-      localStorage.removeItem('token');
-      localStorage.removeItem('userName');
+      clearAuth();
       addToast('Phiên đăng nhập hết hạn!', 'error');
       router.push('/login');
     }

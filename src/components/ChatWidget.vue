@@ -5,13 +5,15 @@ import { useRouter } from 'vue-router';
 // State
 import { io } from 'socket.io-client';
 import { useToast } from '../composables/useToast';
+import { useAuth } from '../composables/useAuth';
 
 const { addToast } = useToast();
+const { userName, token } = useAuth();
 const router = useRouter();
 const isOpen = ref(false);
 const step = ref('login'); // 'login', 'waiting', 'chat'
 const customerName = ref('');
-const isLoggedIn = computed(() => !!localStorage.getItem('userName'));
+const isLoggedIn = computed(() => !!userName.value);
 const isSupporterTyping = ref(false);
 let typingTimeout = null;
 
@@ -99,7 +101,7 @@ const closeChat = () => {
 const openChat = () => {
   isOpen.value = true;
   if (isLoggedIn.value) {
-    customerName.value = localStorage.getItem('userName') || 'Khách';
+    customerName.value = userName.value;
   }
 };
 
