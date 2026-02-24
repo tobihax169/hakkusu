@@ -312,5 +312,5 @@ io.on('connection', (socket) => {
 // Bật Server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🚀 Server Backend (Node.js) đang chạy tại http://localhost:${PORT}`);
+  console.log(`🚀 Server Backend đã khởi động thành công trên cổng ${PORT}`);
 });
