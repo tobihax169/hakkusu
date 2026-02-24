@@ -25,7 +25,7 @@ const handleLogin = async () => {
     const data = await response.json();
 
     if (data.success) {
-      setAuth(data.token, data.user.name);
+      setAuth(data.token, data.user.name, data.user.role);
       addToast('Đăng nhập thành công!', 'success');
       router.push('/');
     } else {
