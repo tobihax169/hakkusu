@@ -35,7 +35,7 @@ onMounted(() => {
             <a href="#about">Về chúng tôi</a>
           </nav>
           
-          <div class="auth-buttons desktop-nav">
+          <div class="auth-buttons">
             <template v-if="userName">
               <router-link v-if="role === 'admin' || role === 'staff'" to="/dashboard" class="btn-text" style="color: #f59e0b; font-weight: bold; margin-right: 10px;">
                 Quản trị ⚙️
@@ -204,7 +204,20 @@ main {
     display: none;
   }
   .header-right {
-    gap: 1rem;
+    gap: 0.5rem;
+  }
+  .auth-buttons {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+    gap: 0.5rem;
+  }
+  .btn-small {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  .btn-text {
+    font-size: 0.8rem;
   }
 }
 </style>
