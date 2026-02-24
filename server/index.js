@@ -47,7 +47,7 @@ app.post('/api/auth/register', async (req, res) => {
     res.status(201).json({ success: true, message: 'Đăng ký thành công!' });
   } catch (error) {
     console.error('Lỗi đăng ký:', error);
-    res.status(500).json({ success: false, message: 'Đã xảy ra lỗi trên máy chủ.' });
+    res.status(500).json({ success: false, message: 'Lỗi CSDL: ' + error.message });
   }
 });
 
@@ -87,7 +87,7 @@ app.post('/api/auth/login', async (req, res) => {
 
   } catch (error) {
     console.error('Lỗi đăng nhập:', error);
-    res.status(500).json({ success: false, message: 'Đã xảy ra lỗi trên máy chủ.' });
+    res.status(500).json({ success: false, message: 'Lỗi CSDL: ' + error.message });
   }
 });
 
