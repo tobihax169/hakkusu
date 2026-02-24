@@ -26,6 +26,20 @@ const editState = ref({
 const activeTab = ref('info'); // 'info', 'deposit'
 const isLoading = ref(true);
 
+const depositAmount = ref(50000); // Mặc định 50K
+// Tạo đường link VietQR tự động dựa trên số tiền. (Agribank BIN = 970405)
+// Định dạng: https://img.vietqr.io/image/BIN-STK-TEMPLATE.png?amount=XXX&addInfo=YYY&accountName=ZZZ
+const qrCodeUrl = computed(() => {
+  const bin = "970405"; // Mã BIN của Agribank
+  const accountNo = "1805205159721"; // STK của bạn
+  const template = "compact"; // Giao diện QR code
+  const amount = depositAmount.value || 0;
+  const description = `NAP ${user.value.name.replace(/\s+/g, '')}`; // Nội dung CK, xóa dấu cách
+  const accountName = "PHAM DINH LOC";
+  
+  return `https://img.vietqr.io/image/${bin}-${accountNo}-${template}.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
+});
+
 onMounted(async () => {
   const token = authStateToken.value;
   if (!token) {
@@ -54,8 +68,36 @@ onMounted(async () => {
   }
 });
 
+const isUploading = ref(false);
+
+const handleAvatarUpload = (event) => {
+  const file = event.target.files[0];
+  if (!file) {
+    editState.value.newAvatar = '';
+    return;
+  }
+  
+  if (file.size > 5 * 1024 * 1024) {
+    addToast('Kích thước ảnh không được vượt quá 5MB.', 'error');
+    event.target.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    editState.value.newAvatar = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+const cancelAvatarEdit = () => {
+  editState.value.isEditingAvatar = false;
+  editState.value.newAvatar = '';
+};
+
 const updateAvatar = async () => {
   if (!editState.value.newAvatar.trim()) return;
+  isUploading.value = true;
   try {
     const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/profile/avatar`, {
       method: 'PUT',
@@ -69,12 +111,15 @@ const updateAvatar = async () => {
     if (data.success) {
       user.value.avatar = data.avatar;
       editState.value.isEditingAvatar = false;
+      editState.value.newAvatar = '';
       addToast('Cập nhật avatar thành công', 'success');
     } else {
       addToast(data.message, 'error');
     }
   } catch (err) {
     addToast('Lỗi kết nối', 'error');
+  } finally {
+    isUploading.value = false;
   }
 };
 
@@ -110,7 +155,7 @@ const updateName = async () => {
 };
 
 const copySyntax = () => {
-    navigator.clipboard.writeText(`NAP ${user.value.name}`);
+    navigator.clipboard.writeText(`NAP ${user.value.name.replace(/\s+/g, '')}`);
     addToast('Đã copy cú pháp nạp!', 'success');
 }
 </script>
@@ -125,7 +170,7 @@ const copySyntax = () => {
       <div v-else class="profile-card glass">
         <!-- Sidebar -->
         <div class="profile-sidebar">
-          <div class="user-avatar-wrapper" @click="editState.isEditingAvatar = !editState.isEditingAvatar">
+          <div class="user-avatar-wrapper" @click="editState.isEditingAvatar = true">
             <div class="user-avatar" :style="user.avatar ? `background-image: url('${user.avatar}'); background-size: cover; background-position: center;` : ''">
               <span v-if="!user.avatar" class="avatar-text">{{ user.name.charAt(0).toUpperCase() }}</span>
             </div>
@@ -133,10 +178,17 @@ const copySyntax = () => {
           </div>
           
           <div v-if="editState.isEditingAvatar" class="edit-avatar-box">
-            <input v-model="editState.newAvatar" type="text" placeholder="Nhập link ảnh (URL)..." class="custom-input" />
-            <div class="edit-actions mt-2">
-              <button @click="updateAvatar" class="btn-primary btn-sm">Lưu</button>
-              <button @click="editState.isEditingAvatar = false" class="btn-cancel btn-sm">Hủy</button>
+            <input type="file" accept="image/*" @change="handleAvatarUpload" class="custom-input p-1" />
+            
+            <div v-if="editState.newAvatar" class="preview-avatar mt-2 text-center">
+              <img :src="editState.newAvatar" alt="Preview" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);" />
+            </div>
+
+            <div class="edit-actions mt-2 justify-center">
+              <button @click="updateAvatar" class="btn-primary btn-sm" :disabled="!editState.newAvatar || isUploading">
+                {{ isUploading ? 'Đang Lưu...' : 'Lưu' }}
+              </button>
+              <button @click="cancelAvatarEdit" class="btn-cancel btn-sm">Hủy</button>
             </div>
           </div>
 
@@ -202,37 +254,43 @@ const copySyntax = () => {
             </div>
           </div>
 
-          <!-- Tab Deposit -->
+          <!-- Tab Deposit (Agribank) -->
           <div v-if="activeTab === 'deposit'" class="tab-pane animate-fade-in">
-            <h3>Nạp tiền tự động 24/7</h3>
-            <p class="text-muted">Tính năng giả lập, chuyển khoản sẽ được cộng tự động nếu có API thật.</p>
+            <h3>Nạp tiền Tự động 24/7 qua Agribank</h3>
+            <p class="text-muted">Tính năng tự động cộng tiền siêu tốc ngay sau khi bạn thanh toán thành công.</p>
+
+            <div class="deposit-controls mb-4">
+              <label style="color: var(--text-main); display: block; margin-bottom: 10px; font-weight: bold;">Nhập số tiền muốn nạp:</label>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <input v-model="depositAmount" type="number" min="10000" step="10000" class="custom-input" style="font-size: 1.2rem; font-weight: bold; width: 200px;" />
+                <span style="font-size: 1.2rem; font-weight: bold; color: #10b981;">VNĐ</span>
+              </div>
+            </div>
             
             <div class="bank-card">
               <div class="bank-info">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Vietcombank_logo.svg/1024px-Vietcombank_logo.svg.png" 
-                     class="bank-logo" alt="Vietcombank" />
+                <img src="https://upload.wikimedia.org/wikipedia/commons/2/29/Agribank_logo.png" 
+                     class="bank-logo" alt="Agribank" style="filter: brightness(1.2);" />
                 <div class="bank-details">
-                  <h4>Ngân hàng Vietcombank</h4>
-                  <p>Chi nhánh Thăng Long</p>
-                  <p class="acc-num">Số tài khoản: <strong>0123456789</strong></p>
-                  <p class="acc-name">Chủ TK: NGUYEN VAN A</p>
+                  <h4 style="color: #ed1c24;">Agribank - Ngân hàng Nông nghiệp</h4>
+                  <p class="acc-num">Số tài khoản: <strong>1805205159721</strong></p>
+                  <p class="acc-name">Chủ TK: <strong>PHẠM ĐÌNH LỘC</strong></p>
                 </div>
               </div>
               
-              <div class="qr-placeholder">
-                <div class="qr-box">
-                  MÃ QR Ở ĐÂY
-                </div>
+              <div class="qr-placeholder" style="background: white; border-radius: 12px; padding: 10px;">
+                 <!-- Nơi hiển thị Ảnh QR động từ máy chủ VietQR -->
+                 <img :src="qrCodeUrl" alt="VietQR Agribank" style="width: 200px; height: 200px; object-fit: contain; border-radius: 8px;" />
               </div>
             </div>
 
             <div class="syntax-box">
-              <p>Nội dung chuyển khoản (Bắt buộc ghi đúng):</p>
+              <p>Nội dung chuyển khoản (Bắt buộc ghi MÃ này để được cộng Tự Động):</p>
               <div class="syntax-code" @click="copySyntax">
-                <span>NAP {{ user.name }}</span>
+                <span>NAP {{ user.name.replace(/\s+/g, '') }}</span>
                 <button class="btn-copy">Copy</button>
               </div>
-              <small class="text-warning">Giao dịch sẽ được xử lý tự động trong vòng 3 phút.</small>
+              <small class="text-warning">Giao dịch sẽ được cập nhật số dư trong vài giây sau khi chuyển thành công.</small>
             </div>
           </div>
         </div>
@@ -356,6 +414,10 @@ const copySyntax = () => {
   gap: 10px;
   width: 100%;
 }
+.w-100 { width: 100%; }
+.text-center { text-align: center; }
+.justify-center { justify-content: center; }
+.p-1 { padding: 5px; cursor: pointer; }
 
 .nav-btn {
   background: transparent;

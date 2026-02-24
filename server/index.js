@@ -11,7 +11,7 @@ const User = require('./models/User');
 
 const app = express();
 app.use(cors());
-app.use(express.json()); // Để parse JSON requests
+app.use(express.json({ limit: '10mb' })); // Để parse JSON requests
 
 // -- KẾT NỐI MONGODB --
 mongoose.connect(process.env.MONGODB_URI)
@@ -169,6 +169,62 @@ app.get('/api/staff/tickets', requireRole(['admin', 'staff']), (req, res) => {
     res.json({ success: true, tickets });
   } catch(error) {
     res.status(500).json({ success: false, message: 'Lỗi khi tải Tickets' });
+  }
+});
+
+// -- WEBHOOK TỰ ĐỘNG CỘNG TIỀN (VD: Tích hợp qua SePay webhook) --
+app.post('/api/webhook/bank', async (req, res) => {
+  try {
+    // Tùy theo định dạng payload của SePay/Casso/Webhook
+    /* Giả sử định dạng chuẩn của SePay trả về:
+       {
+         "gateway": "Sepay",
+         "transactionDate": "2024-05-12 10:12:34",
+         "accountNumber": "1805...21",
+         "subAccount": "sub...",
+         "transferAmount": 50000,
+         "transferType": "in",
+         "transferContent": "NAP Hax",
+         "referenceCode": "123456"
+       }
+    */
+    const { transferAmount, transferType, transferContent } = req.body;
+
+    // Chỉ sử lý tiền VÀO
+    if (transferType === 'in' && transferAmount > 0 && transferContent) {
+      const contentUpper = transferContent.toUpperCase();
+      
+      // Tìm xem nội dung có chữ NAP <tên> không
+      if (contentUpper.includes('NAP ')) {
+        // Trích xuất "Tên", ví dụ từ "NAP HAX 12345" -> lấy "HAX"
+        // Regex bóc tách chữ ngay sau chữ NAP
+        const match = contentUpper.match(/NAP\s+([A-Z0-9]+)/);
+        if (match && match[1]) {
+          const rawName = match[1];
+
+          // Đi tìm user có tên đó (Loại bỏ khoảng trắng của tên thật để so sánh)
+          // Cách hay nhất: Tìm qua RegExp ignore case và ignore spaces... Cần regex chuyên sâu
+          // Do ta bắt buộc user dán cú pháp là NAP [Tên dính liền], nên tìm theo RegEx khá dễ:
+          const users = await User.find();
+          const targetUser = users.find(u => u.name.replace(/\s+/g, '').toUpperCase() === rawName);
+
+          if (targetUser) {
+            targetUser.balance += Number(transferAmount);
+            await targetUser.save();
+            console.log(`[BANK WEBHOOK] ✅ Đã tự động cộng ${transferAmount} vnđ cho ${targetUser.name}`);
+            
+            // THÔNG BÁO VỀ WEB QUA SOCKET NẾU USER ĐANG ONLINE (Tùy chọn tương lai nâng cấp)
+          } else {
+             console.log(`[BANK WEBHOOK] ❌ Không tìm thấy user nào trùng khớp cú pháp: ${rawName}`);
+          }
+        }
+      }
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[WEBHOOK ERROR]', err);
+    res.status(500).json({ success: false });
   }
 });
 
