@@ -58,7 +58,8 @@ const initSocket = () => {
         id: data.id,
         sender: 'supporter', // Ai đó đang chat lại
         authorName: data.authorName, // Tên người trả lời trên discord
-        text: data.text
+        text: data.text,
+        imageUrl: data.imageUrl
       });
       scrollToBottom();
       
@@ -105,13 +106,56 @@ const openChat = () => {
   }
 };
 
+const fileInput = ref(null);
+
+const triggerFileInput = () => {
+  if (fileInput.value) fileInput.value.click();
+};
+
+const handleFileUpload = (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (file.size > 5 * 1024 * 1024) {
+    addToast('Kích thước ảnh không được vượt quá 5MB.', 'error');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const base64Image = e.target.result;
+    
+    // Đẩy ảnh vào giao diện Chat
+    messages.value.push({
+      id: Date.now(),
+      sender: 'user',
+      imageUrl: base64Image
+    });
+
+    // Bắn thẳng lên Server (sẽ được Queue nếu supporter chưa nhận)
+    socket.emit('send_message', { 
+      ticketId: ticketIdState.value, 
+      image: base64Image
+    });
+    
+    scrollToBottom();
+  };
+  reader.readAsDataURL(file);
+};
+
 const startChat = () => {
   if (!customerName.value.trim()) return;
   
-  step.value = 'waiting';
+  step.value = 'chat'; // Chuyển thẳng tới chat để khách có thể gửi sẵn tin nhắn / hình ảnh
   
   // Mở Socket nếu chưa mở
   initSocket();
+
+  messages.value.push({
+    id: Date.now(),
+    sender: 'system',
+    text: 'Yêu cầu của bạn đang được kết nối... Bạn có thể để lại tin nhắn hoặc hình ảnh trước lúc này!'
+  });
 
   // Báo cho Server Node.js phát thông báo lên Discord
   socket.emit('create_ticket', { customerName: customerName.value });
@@ -147,8 +191,10 @@ const sendMessage = () => {
 // Chat header title dựa trên trạng thái
 const chatTitle = () => {
   if (step.value === 'login') return 'Hỗ trợ khách hàng';
-  if (step.value === 'waiting') return 'Đang kết nối...';
-  if (step.value === 'chat') return `${ticketIdState.value} - ${customerName.value}`;
+  if (step.value === 'chat') {
+    if (supporterNameState.value) return `${ticketIdState.value} - ${supporterNameState.value}`;
+    return 'Đang chờ nhân viên...';
+  }
   return 'Chat';
 };
 </script>
@@ -166,7 +212,7 @@ const chatTitle = () => {
     <!-- Header -->
     <div class="chat-header">
       <div class="chat-header-info">
-        <div class="status-dot" :class="{ 'connected': step === 'chat', 'waiting': step === 'waiting' }"></div>
+        <div class="status-dot" :class="{ 'connected': supporterNameState, 'waiting': step === 'chat' && !supporterNameState }"></div>
         <h3 class="chat-title">{{ chatTitle() }}</h3>
       </div>
       <button @click="closeChat" class="close-btn">&times;</button>
@@ -195,14 +241,7 @@ const chatTitle = () => {
         </template>
       </div>
 
-      <!-- Bước 2: Chờ supporter nhận ticket -->
-      <div v-else-if="step === 'waiting'" class="step-waiting">
-        <div class="loader"></div>
-        <p>Đang gửi yêu cầu đến hệ thống...</p>
-        <small class="text-muted">Vui lòng chờ nhân viên hỗ trợ chấp nhận ticket.</small>
-      </div>
-
-      <!-- Bước 3: Đang chat -->
+      <!-- Bước 3: Đang chat (Có thể là chờ hoặc đã có ng nhận) -->
       <div v-else-if="step === 'chat'" class="step-chat">
         <div class="messages-container" ref="messagesContainer">
           <div 
@@ -215,7 +254,8 @@ const chatTitle = () => {
               {{ msg.text }}
             </div>
             <div v-else class="message-bubble">
-              {{ msg.text }}
+              <span v-if="msg.text">{{ msg.text }}</span>
+              <img v-if="msg.imageUrl" :src="msg.imageUrl" class="chat-image-preview" alt="Đã gửi một ảnh" />
             </div>
           </div>
         </div>
@@ -228,6 +268,17 @@ const chatTitle = () => {
         </div>
         
         <div class="chat-input-area">
+          <input 
+            type="file" 
+            ref="fileInput" 
+            @change="handleFileUpload" 
+            accept="image/*" 
+            style="display: none;" 
+          />
+          <button @click="triggerFileInput" class="attach-btn" title="Gửi hình ảnh">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+          </button>
+          
           <input 
             v-model="inputMessage" 
             @keyup.enter="sendMessage"
@@ -544,5 +595,30 @@ const chatTitle = () => {
 @keyframes typing {
   0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
   40% { transform: scale(1); opacity: 1; }
+}
+
+.attach-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.attach-btn:hover {
+  color: var(--primary);
+}
+
+.chat-image-preview {
+  max-width: 100%;
+  border-radius: 8px;
+  margin-top: 5px;
+  max-height: 180px;
+  object-fit: contain;
+  background: rgba(0,0,0,0.2);
 }
 </style>

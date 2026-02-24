@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, AttachmentBuilder } = require('discord.js');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
@@ -305,9 +305,31 @@ client.on('interactionCreate', async interaction => {
 
     // Báo về cho Website (Khách hàng) biết là Supporter đã nhận
     io.to(ticketInfo.socketId).emit('ticket_accepted', {
-      supporterName: supporterName,
+      supporterName: interaction.user.username,
       ticketId: ticketId
     });
+
+    // Cập nhật tên supporter vào bộ nhớ đệm
+    ticketInfo.supporterName = interaction.user.username;
+
+    // NHẢ TOÀN BỘ TIN NHẮN TỪ HÀNG ĐỢI LÚC CHỜ VÀO DISCORD
+    if (ticketInfo.messageQueue && ticketInfo.messageQueue.length > 0) {
+      for (const msg of ticketInfo.messageQueue) {
+        let files = [];
+        if (msg.image) {
+          try {
+            const base64Data = msg.image.split(',')[1];
+            const buffer = Buffer.from(base64Data, 'base64');
+            files.push(new AttachmentBuilder(buffer, { name: 'upload.png' }));
+          } catch (e) { console.error(e); }
+        }
+        await ticketChannel.send({ 
+          content: `**[${ticketInfo.customerName} (Lúc chờ)]**: ${msg.text || '[Đã gửi một ảnh]'}`, 
+          files 
+        });
+      }
+      ticketInfo.messageQueue = []; // Clear
+    }
   }
 
   // --- Xử lý Nút Đóng Ticket ---
@@ -358,12 +380,18 @@ client.on('messageCreate', async message => {
   }
 
   if (targetTicketId && targetSocketId) {
+    let imageUrl = null;
+    if (message.attachments.size > 0) {
+      imageUrl = message.attachments.first().url;
+    }
+
     // Gửi tin nhắn từ Discord về Website
     io.to(targetSocketId).emit('receive_message', {
       id: Date.now(),
       sender: 'supporter',
       authorName: message.author.username,
-      text: message.content
+      text: message.content,
+      imageUrl: imageUrl
     });
   }
 });
@@ -398,7 +426,8 @@ io.on('connection', (socket) => {
       customerName: customerName,
       socketId: socket.id,
       channelId: null,
-      status: 'waiting' // 'waiting', 'active', 'closed'
+      status: 'waiting', // 'waiting', 'active', 'closed'
+      messageQueue: [] // Lưu tạm tin nhắn/ảnh khách nhắn khi chưa ai nhận ticket
     });
 
     // Thông báo cho website biết ticket đã tạo thành công và đang chờ
@@ -433,16 +462,34 @@ io.on('connection', (socket) => {
 
   // Khách hàng gửi tin nhắn từ Website
   socket.on('send_message', async (data) => {
-    const { ticketId, text } = data;
+    const { ticketId, text, image } = data;
     const ticketInfo = activeTickets.get(ticketId);
 
-    if (ticketInfo && ticketInfo.status === 'active' && ticketInfo.channelId) {
-      try {
-        const ticketChannel = await client.channels.fetch(ticketInfo.channelId);
-        // Gửi tin nhắn của khách vào đúng kênh trên Discord
-        await ticketChannel.send(`**[${ticketInfo.customerName}]**: ${text}`);
-      } catch (error) {
-        console.error("Lỗi khi gửi tin nhắn Khách -> Discord:", error);
+    if (ticketInfo && ticketInfo.status !== 'closed') {
+      let files = [];
+      if (image) {
+        try {
+          const base64Data = image.split(',')[1];
+          const buffer = Buffer.from(base64Data, 'base64');
+          files.push(new AttachmentBuilder(buffer, { name: 'upload.png' }));
+        } catch (e) {
+          console.error("Lỗi parse ảnh", e);
+        }
+      }
+
+      if (ticketInfo.status === 'active' && ticketInfo.channelId) {
+        try {
+          const ticketChannel = await client.channels.fetch(ticketInfo.channelId);
+          await ticketChannel.send({ 
+            content: `**[${ticketInfo.customerName}]**: ${text || '[Đã gửi một ảnh]'}`,
+            files
+          });
+        } catch (error) {
+          console.error("Lỗi khi gửi tin nhắn Khách -> Discord:", error);
+        }
+      } else if (ticketInfo.status === 'waiting') {
+        // Đưa vào hàng đợi để chờ gửi lúc có người nhận
+        ticketInfo.messageQueue.push({ text, image });
       }
     }
   });
