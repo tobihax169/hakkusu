@@ -1,12 +1,21 @@
 <script setup>
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, computed } from 'vue';
+import { useRouter } from 'vue-router';
 
 // State
 import { io } from 'socket.io-client';
 
+const router = useRouter();
 const isOpen = ref(false);
 const step = ref('login'); // 'login', 'waiting', 'chat'
 const customerName = ref('');
+const isLoggedIn = computed(() => !!localStorage.getItem('userName'));
+
+const goToLogin = () => {
+  closeChat();
+  router.push('/login');
+};
+
 const ticketIdState = ref('');
 const supporterNameState = ref('');
 const messages = ref([]);
@@ -69,6 +78,9 @@ const closeChat = () => {
 
 const openChat = () => {
   isOpen.value = true;
+  if (isLoggedIn.value) {
+    customerName.value = localStorage.getItem('userName') || 'Khách';
+  }
 };
 
 const startChat = () => {
@@ -143,19 +155,22 @@ const chatTitle = () => {
       
       <!-- Bước 1: Nhập tên (Đăng nhập) -->
       <div v-if="step === 'login'" class="step-login">
-        <div class="welcome-icon">👋</div>
-        <h4>Chào mừng bạn!</h4>
-        <p>Vui lòng nhập tên để chúng tôi hỗ trợ bạn tốt nhất.</p>
-        <input 
-          v-model="customerName" 
-          @keyup.enter="startChat"
-          type="text" 
-          placeholder="Tên của bạn..." 
-          class="chat-input-field"
-        />
-        <button @click="startChat" class="btn-primary w-100 mt-3" :disabled="!customerName.trim()">
-          Bắt đầu Chat
-        </button>
+        <template v-if="isLoggedIn">
+          <div class="welcome-icon">👋</div>
+          <h4>Chào mừng, {{ customerName }}!</h4>
+          <p>Bạn cần hỗ trợ? Hãy kết nối với bộ phận chăm sóc khách hàng.</p>
+          <button @click="startChat" class="btn-primary w-100 mt-3">
+            Bắt đầu Chat
+          </button>
+        </template>
+        <template v-else>
+          <div class="welcome-icon">🔒</div>
+          <h4>Yêu cầu đăng nhập</h4>
+          <p>Vui lòng đăng nhập tài khoản để có thể sử dụng chức năng chat hỗ trợ.</p>
+          <button @click="goToLogin" class="btn-primary w-100 mt-3">
+            Đăng nhập ngay
+          </button>
+        </template>
       </div>
 
       <!-- Bước 2: Chờ supporter nhận ticket -->
