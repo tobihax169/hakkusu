@@ -82,7 +82,8 @@ app.post('/api/auth/login', async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        role: user.role
       }
     });
 
@@ -105,6 +106,69 @@ app.get('/api/auth/me', async (req, res) => {
     res.json({ success: true, user });
   } catch (error) {
     res.status(401).json({ success: false, message: 'Token không hợp lệ hoặc đã hết hạn.' });
+  }
+});
+
+// -- DASHBOARD API (GIAO DIỆN NHÂN VIÊN & ADMIN) --
+// Middleware: Yêu cầu quyền
+const requireRole = (roles) => {
+  return async (req, res, next) => {
+    try {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (!token) return res.status(401).json({ success: false, message: 'Không có quyền truy cập.' });
+      
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
+      const user = await User.findById(decoded.userId);
+      if (!user || !roles.includes(user.role)) {
+        return res.status(403).json({ success: false, message: 'Từ chối: Bạn không đủ quyền thực hiện thao tác này.' });
+      }
+      req.user = user;
+      next();
+    } catch(err) {
+       res.status(401).json({ success: false, message: 'Phiên đăng nhập hết hạn.' });
+    }
+  }
+};
+
+// [ADMIN] Lấy toàn bộ người dùng
+app.get('/api/admin/users', requireRole(['admin']), async (req, res) => {
+  try {
+    const users = await User.find().select('-password').sort({ createdAt: -1 });
+    res.json({ success: true, users });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+  }
+});
+
+// [ADMIN] Chỉnh sửa Tài khoản (Cộng tiền, đổi Role)
+app.put('/api/admin/users/:id', requireRole(['admin']), async (req, res) => {
+  try {
+    const { role, balance } = req.body;
+    const updateData = {};
+    if (role) updateData.role = role;
+    if (balance !== undefined) updateData.balance = Number(balance);
+
+    const updatedUser = await User.findByIdAndUpdate(req.params.id, updateData, { new: true }).select('-password');
+    res.json({ success: true, message: 'Cập nhật tài khoản thành công', user: updatedUser });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+  }
+});
+
+// [STAFF + ADMIN] Xem danh sách các vé hỗ trợ (Ticket) đang bật
+app.get('/api/staff/tickets', requireRole(['admin', 'staff']), (req, res) => {
+  try {
+    const tickets = Array.from(activeTickets.entries()).map(([id, info]) => {
+        return {
+           ticketId: id,
+           customerName: info.customerName,
+           status: info.status,
+           supporterName: info.supporterName || null
+        };
+    });
+    res.json({ success: true, tickets });
+  } catch(error) {
+    res.status(500).json({ success: false, message: 'Lỗi khi tải Tickets' });
   }
 });
 

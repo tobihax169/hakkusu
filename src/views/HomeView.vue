@@ -5,7 +5,7 @@ import { useAuth } from '../composables/useAuth'
 
 const router = useRouter()
 const isScrolled = ref(false)
-const { userName, clearAuth } = useAuth()
+const { userName, role, clearAuth } = useAuth()
 
 const handleLogout = () => {
   clearAuth()
@@ -37,6 +37,9 @@ onMounted(() => {
           
           <div class="auth-buttons desktop-nav">
             <template v-if="userName">
+              <router-link v-if="role === 'admin' || role === 'staff'" to="/dashboard" class="btn-text" style="color: #f59e0b; font-weight: bold; margin-right: 10px;">
+                Quản trị ⚙️
+              </router-link>
               <router-link to="/profile" class="btn-text">
                 Xin chào, <strong style="color: #6366f1;">{{ userName }}</strong>
               </router-link>
