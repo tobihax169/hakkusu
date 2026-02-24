@@ -1,0 +1,474 @@
+<script setup>
+import { ref, watch, nextTick } from 'vue';
+
+// State
+import { io } from 'socket.io-client';
+
+const isOpen = ref(false);
+const step = ref('login'); // 'login', 'waiting', 'chat'
+const customerName = ref('');
+const ticketIdState = ref('');
+const supporterNameState = ref('');
+const messages = ref([]);
+const inputMessage = ref('');
+const messagesContainer = ref(null);
+
+let socket = null;
+
+const initSocket = () => {
+  if (!socket) {
+    socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3000');
+    
+    // Nhận thông báo đã tạo ticket thành công từ Server (Bot Discord đã post yêu cầu)
+    socket.on('ticket_created', (data) => {
+      ticketIdState.value = data.ticketId;
+    });
+
+    // Nhận lời báo "Supporter đã ấn nút nhận"
+    socket.on('ticket_accepted', (data) => {
+      step.value = 'chat';
+      supporterNameState.value = data.supporterName;
+      messages.value.push({
+        id: Date.now(),
+        sender: 'system',
+        text: `Nhân viên ${data.supporterName} đã tham gia phiên hỗ trợ.`
+      });
+      scrollToBottom();
+    });
+
+    // Nhận tin nhắn từ Discord gửi về Web
+    socket.on('receive_message', (data) => {
+      messages.value.push({
+        id: data.id,
+        sender: 'supporter', // Ai đó đang chat lại
+        authorName: data.authorName, // Tên người trả lời trên discord
+        text: data.text
+      });
+      scrollToBottom();
+    });
+
+    // Bị Đóng ticket từ Discord
+    socket.on('ticket_closed', () => {
+      closeChat();
+      
+      // Reset lại ngay trạng thái để khách hàng có thể mở chat phiên mới nếu muốn
+      setTimeout(() => {
+        step.value = 'login';
+        customerName.value = '';
+        ticketIdState.value = '';
+        supporterNameState.value = '';
+        messages.value = [];
+      }, 300); // Đợi hiệu ứng đóng Widget kết thúc
+    });
+  }
+};
+
+const closeChat = () => {
+  isOpen.value = false;
+};
+
+const openChat = () => {
+  isOpen.value = true;
+};
+
+const startChat = () => {
+  if (!customerName.value.trim()) return;
+  
+  step.value = 'waiting';
+  
+  // Mở Socket nếu chưa mở
+  initSocket();
+
+  // Báo cho Server Node.js phát thông báo lên Discord
+  socket.emit('create_ticket', { customerName: customerName.value });
+};
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (messagesContainer.value) {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+    }
+  });
+};
+
+const sendMessage = () => {
+  if (!inputMessage.value.trim()) return;
+  
+  messages.value.push({
+    id: Date.now(),
+    sender: 'user',
+    text: inputMessage.value
+  });
+  
+  // Emit Lên server bắn vào Thread Discord
+  socket.emit('send_message', { 
+    ticketId: ticketIdState.value, 
+    text: inputMessage.value 
+  });
+  
+  inputMessage.value = '';
+  scrollToBottom();
+};
+
+// Chat header title dựa trên trạng thái
+const chatTitle = () => {
+  if (step.value === 'login') return 'Hỗ trợ khách hàng';
+  if (step.value === 'waiting') return 'Đang kết nối...';
+  if (step.value === 'chat') return `${ticketIdState.value} - ${customerName.value}`;
+  return 'Chat';
+};
+</script>
+
+<template>
+  <div class="chat-container">
+    <!-- Chat Launcher Button -->
+    <button v-if="!isOpen" @click="openChat" class="chat-launcher animate-fade-in">
+      <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+    </button>
+
+    <div v-if="isOpen" class="chat-widget animate-slide-up">
+    <!-- Header -->
+    <div class="chat-header">
+      <div class="chat-header-info">
+        <div class="status-dot" :class="{ 'connected': step === 'chat', 'waiting': step === 'waiting' }"></div>
+        <h3 class="chat-title">{{ chatTitle() }}</h3>
+      </div>
+      <button @click="closeChat" class="close-btn">&times;</button>
+    </div>
+
+    <!-- Body -->
+    <div class="chat-body">
+      
+      <!-- Bước 1: Nhập tên (Đăng nhập) -->
+      <div v-if="step === 'login'" class="step-login">
+        <div class="welcome-icon">👋</div>
+        <h4>Chào mừng bạn!</h4>
+        <p>Vui lòng nhập tên để chúng tôi hỗ trợ bạn tốt nhất.</p>
+        <input 
+          v-model="customerName" 
+          @keyup.enter="startChat"
+          type="text" 
+          placeholder="Tên của bạn..." 
+          class="chat-input-field"
+        />
+        <button @click="startChat" class="btn-primary w-100 mt-3" :disabled="!customerName.trim()">
+          Bắt đầu Chat
+        </button>
+      </div>
+
+      <!-- Bước 2: Chờ supporter nhận ticket -->
+      <div v-else-if="step === 'waiting'" class="step-waiting">
+        <div class="loader"></div>
+        <p>Đang gửi yêu cầu đến hệ thống...</p>
+        <small class="text-muted">Vui lòng chờ nhân viên hỗ trợ chấp nhận ticket.</small>
+      </div>
+
+      <!-- Bước 3: Đang chat -->
+      <div v-else-if="step === 'chat'" class="step-chat">
+        <div class="messages-container" ref="messagesContainer">
+          <div 
+            v-for="msg in messages" 
+            :key="msg.id" 
+            class="message-wrapper"
+            :class="{ 'mine': msg.sender === 'user', 'system': msg.sender === 'system' }"
+          >
+            <div v-if="msg.sender === 'system'" class="system-message">
+              {{ msg.text }}
+            </div>
+            <div v-else class="message-bubble">
+              {{ msg.text }}
+            </div>
+          </div>
+        </div>
+        
+        <div class="chat-input-area">
+          <input 
+            v-model="inputMessage" 
+            @keyup.enter="sendMessage"
+            type="text" 
+            placeholder="Nhập tin nhắn..." 
+            class="chat-input-field"
+          />
+          <button @click="sendMessage" class="send-btn">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.chat-launcher {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  color: white;
+  border: none;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10000;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.chat-launcher:hover {
+  transform: translateY(-5px) scale(1.05);
+  box-shadow: 0 8px 30px rgba(99, 102, 241, 0.6);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.chat-widget {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 350px;
+  height: 500px;
+  background: var(--bg-card);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 9999;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: 'Inter', sans-serif;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+.chat-header {
+  background: rgba(30, 41, 59, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chat-header-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #64748b; /* default / login */
+}
+.status-dot.waiting { background: #eab308; box-shadow: 0 0 8px #eab308; }
+.status-dot.connected { background: #10b981; box-shadow: 0 0 8px #10b981; }
+
+.chat-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.close-btn:hover {
+  color: white;
+}
+
+.chat-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(15, 23, 42, 0.5);
+  overflow: hidden; /* Hide scrollbars outside messages container */
+}
+
+/* Common Input styles */
+.chat-input-field {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px 15px;
+  color: white;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.chat-input-field:focus {
+  border-color: var(--primary);
+}
+
+.w-100 { width: 100%; }
+.mt-3 { margin-top: 1rem; }
+.text-muted { color: var(--text-muted); }
+
+/* Step: Login */
+.step-login {
+  display: flex;
+  flex-direction: column;
+  padding: 30px 20px;
+  text-align: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.welcome-icon {
+  font-size: 3rem;
+  margin-bottom: 10px;
+}
+
+.step-login h4 { margin: 0 0 10px 0; font-size: 1.25rem; }
+.step-login p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 25px; }
+
+/* Step: Waiting */
+.step-waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 20px;
+  text-align: center;
+}
+
+.loader {
+  border: 3px solid rgba(255,255,255,0.1);
+  border-top: 3px solid var(--primary);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* Step: Chat */
+.step-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.messages-container {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Custom scrollbar */
+.messages-container::-webkit-scrollbar { width: 6px; }
+.messages-container::-webkit-scrollbar-track { background: transparent; }
+.messages-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+.message-wrapper {
+  display: flex;
+  width: 100%;
+}
+
+.message-wrapper.mine {
+  justify-content: flex-end;
+}
+
+.message-bubble {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.message-wrapper:not(.mine) .message-bubble {
+  background: rgba(255, 255, 255, 0.1);
+  border-bottom-left-radius: 4px;
+}
+
+.message-wrapper.mine .message-bubble {
+  background: var(--primary);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.system-message {
+  width: 100%;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--accent);
+  margin: 10px 0;
+  padding: 5px;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 4px;
+}
+
+.chat-input-area {
+  padding: 15px;
+  display: flex;
+  gap: 10px;
+  background: rgba(30, 41, 59, 0.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.send-btn {
+  background: var(--primary);
+  border: none;
+  min-width: 45px;
+  border-radius: 8px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.send-btn:hover { background: var(--primary-hover); }
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+</style>
