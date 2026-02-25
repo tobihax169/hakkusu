@@ -191,7 +191,7 @@ const waitingTickets = computed(() => tickets.value.filter(t => t.status === 'wa
 
       <!-- Main Content -->
       <main class="vision-main">
-        <header class="vision-header">
+        <div class="vision-header">
           <div class="header-breadcrumb">
             <span class="light-text">Pages / </span> <span class="fw-bold">{{ activeTab }}</span>
             <h2 class="page-title">{{ activeTab.charAt(0).toUpperCase() + activeTab.slice(1) }}</h2>
@@ -205,7 +205,7 @@ const waitingTickets = computed(() => tickets.value.filter(t => t.status === 'wa
               <span class="material-symbols-outlined">logout</span> Thoát
             </button>
           </div>
-        </header>
+        </div>
 
         <div class="vision-content animate-fade-in">
           
@@ -440,6 +440,8 @@ const waitingTickets = computed(() => tickets.value.filter(t => t.status === 'wa
   padding: 30px 20px;
   backdrop-filter: blur(20px);
   position: fixed;
+  top: 0;
+  left: 0;
   height: 100vh;
   z-index: 100;
 }
@@ -483,13 +485,18 @@ const waitingTickets = computed(() => tickets.value.filter(t => t.status === 'wa
 
 /* Main Content */
 .vision-main {
-  flex: 1;
   margin-left: 260px;
+  flex: 1;
+  min-width: 0;
   padding: 30px 40px;
+  box-sizing: border-box;
 }
 
 .vision-header {
-  display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
 }
 .header-breadcrumb { color: #a0aec0; font-size: 0.9rem; }
 .light-text { opacity: 0.7; }
