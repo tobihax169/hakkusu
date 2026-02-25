@@ -498,4 +498,34 @@ footer {
   .desktop-nav { display: none; }
   .hero-actions { justify-content: center; }
 }
+
+@media (max-width: 576px) {
+  .header-content {
+    padding: 1rem 4%;
+  }
+  .header-right {
+    gap: 1rem;
+  }
+  .btn-text {
+    display: none !important; /* Hide admin text on very small screens, keep only avatar */
+  }
+  .avatar-circle {
+    width: 35px;
+    height: 35px;
+    font-size: 1rem;
+  }
+  .lang-switch {
+    font-size: 1.2rem;
+    margin-left: 5px;
+  }
+  .logo-text {
+    font-size: 1.2rem;
+  }
+  .brand-logo {
+    height: 30px;
+  }
+  .marquee-bar {
+    font-size: 0.85rem;
+  }
+}
 </style>
