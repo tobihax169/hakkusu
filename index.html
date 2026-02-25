@@ -30,15 +30,38 @@
   <!-- Thay href ảnh dưới đây bằng link ảnh xịn của bạn nếu có -->
   <!-- <meta property="og:image" content="https://example.com/banner.jpg" /> -->
 
-  <!-- Cấu hình Font chữ -->
+  <!-- Cấu hình Font chữ và Google Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+    rel="stylesheet" />
 </head>
 
 <body>
   <div id="app"></div>
   <script type="module" src="/src/main.js"></script>
+
+  <script>
+    // Chống chuột phải (Context Menu)
+    document.addEventListener('contextmenu', event => event.preventDefault());
+
+    // Chống Inspect Element (F12, Ctrl+Shift+I, v.v.)
+    document.addEventListener('keydown', function (event) {
+      if (
+        event.key === 'F12' ||
+        (event.ctrlKey && event.shiftKey && (event.key === 'I' || event.key === 'i')) ||
+        (event.ctrlKey && event.shiftKey && (event.key === 'J' || event.key === 'j')) ||
+        (event.ctrlKey && event.shiftKey && (event.key === 'C' || event.key === 'c')) ||
+        (event.ctrlKey && (event.key === 'U' || event.key === 'u')) ||
+        (event.ctrlKey && (event.key === 'S' || event.key === 's')) ||
+        (event.ctrlKey && (event.key === 'P' || event.key === 'p')) ||
+        (event.ctrlKey && (event.key === 'A' || event.key === 'a')) // Chống Ctrl+A bôi đen
+      ) {
+        event.preventDefault();
+      }
+    });
+  </script>
 </body>
 
 </html>

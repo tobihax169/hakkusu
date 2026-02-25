@@ -3,9 +3,11 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
 import { useToast } from '../composables/useToast';
+import { useAnnouncement } from '../composables/useAnnouncement';
 
 const router = useRouter();
 const { role, token } = useAuth();
+const { announcementText, setAnnouncement } = useAnnouncement();
 
 const { addToast: toast } = useToast();
 
@@ -103,6 +105,30 @@ const editBalance = (u) => {
    }
 }
 
+// System Settings Logic
+const editAnnouncementText = ref(announcementText.value);
+const pushText = ref('');
+
+const saveAnnouncement = () => {
+    setAnnouncement(editAnnouncementText.value);
+    toast('Đã cập nhật dòng thông báo chạy Marquee!', 'success');
+};
+
+const sendPushNotification = () => {
+    if(!pushText.value.trim()) {
+        toast('Vui lòng nhập nội dung Push Notification', 'error');
+        return;
+    }
+    // Set item to localStorage to trigger cross-tab 'storage' event listener in useToast
+    localStorage.setItem('global_push_notif', JSON.stringify({
+        message: pushText.value,
+        t: Date.now()
+    }));
+    toast('Đã phát Push Notification toàn hệ thống!', 'success');
+    pushText.value = '';
+};
+
+
 </script>
 
 <template>
@@ -134,6 +160,13 @@ const editBalance = (u) => {
             >
               🎫 Quản lý Tickets
             </button>
+            <button v-if="role === 'admin'"
+              @click="activeTab = 'settings'" 
+              :class="{ active: activeTab === 'settings' }"
+              class="nav-btn"
+            >
+              ⚙️ Cấu hình Hệ thống
+            </button>
             <button @click="router.push('/')" class="nav-btn btn-home mt-auto">
               🏠 Quay về
             </button>
@@ -142,6 +175,29 @@ const editBalance = (u) => {
 
         <!-- Content Area -->
         <div class="dashboard-content">
+
+          <!-- ADMIN: SETTINGS -->
+          <div v-if="activeTab === 'settings' && role === 'admin'" class="tab-pane animate-fade-in">
+            <h2 class="mb-3">⚙️ Cấu hình Hệ thống Tùy chỉnh</h2>
+            
+            <div class="config-section glass p-4 mb-4">
+              <h4>1. Dòng thông báo nổi (Marquee Banner)</h4>
+              <p class="text-muted mb-2">Đoạn text sẽ chạy ngang bên dưới thanh Header ở Trang chủ.</p>
+              <div class="flex-row">
+                <input v-model="editAnnouncementText" class="custom-input flex-1" placeholder="Nhập text thông báo..." />
+                <button @click="saveAnnouncement" class="btn-primary">Lưu hiển thị</button>
+              </div>
+            </div>
+
+            <div class="config-section glass p-4">
+              <h4>2. Phát Push Notification Khẩn cấp</h4>
+              <p class="text-muted mb-2">Gửi Toast bật lên ở tất cả các tab người dùng đang mở kèm tiếng "Ting".</p>
+              <div class="flex-row">
+                <input v-model="pushText" class="custom-input flex-1" placeholder="Nhập nội dung thông báo đẩy cực mạnh..." />
+                <button @click="sendPushNotification" class="btn-primary alert-btn">🚨 Phát toàn Server</button>
+              </div>
+            </div>
+          </div>
 
           <!-- ADMIN: USERS -->
           <div v-if="activeTab === 'users' && role === 'admin'" class="tab-pane animate-fade-in">
@@ -217,6 +273,24 @@ const editBalance = (u) => {
 </template>
 
 <style scoped>
+.flex-row {
+  display: flex;
+  gap: 10px;
+}
+.flex-1 { flex: 1; }
+.custom-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 10px 15px;
+  color: white;
+  outline: none;
+}
+.custom-input:focus { border-color: var(--primary); }
+.p-4 { padding: 20px; border-radius: 12px; }
+.mb-4 { margin-bottom: 20px; }
+.alert-btn { background: #ef4444 !important; }
+
 .dashboard-page {
   flex: 1;
   display: flex;

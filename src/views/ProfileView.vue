@@ -157,7 +157,13 @@ const updateName = async () => {
 const copySyntax = () => {
     navigator.clipboard.writeText(`NAP ${user.value.name.replace(/\s+/g, '')}`);
     addToast('Đã copy cú pháp nạp!', 'success');
-}
+};
+
+const handleLogout = () => {
+  clearAuth();
+  addToast('Đã đăng xuất thành công', 'success');
+  router.push('/');
+};
 </script>
 
 <template>
@@ -217,6 +223,9 @@ const copySyntax = () => {
             </button>
             <button @click="router.push('/')" class="nav-btn btn-home">
               🏠 Về trang chủ
+            </button>
+            <button @click="handleLogout" class="nav-btn btn-danger mt-2">
+              🚪 Đăng xuất
             </button>
           </nav>
         </div>
@@ -439,6 +448,8 @@ const copySyntax = () => {
 }
 
 .btn-home { color: var(--text-muted); margin-top: auto; }
+.btn-danger { color: #ef4444; border-top: 1px solid rgba(255,255,255,0.05); border-radius: 0 0 10px 10px; }
+.btn-danger:hover { background: rgba(239, 68, 68, 0.1); }
 
 /* Content Area */
 .profile-content {

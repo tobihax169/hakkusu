@@ -28,6 +28,9 @@ const messages = ref([]);
 const inputMessage = ref('');
 const messagesContainer = ref(null);
 
+// Âm thanh thông báo tin nhắn mới
+const chatAudio = typeof Audio !== 'undefined' ? new Audio('https://raw.githubusercontent.com/IONAudio/ion-sound/master/sounds/button_tiny.mp3') : null;
+
 let socket = null;
 
 const initSocket = () => {
@@ -49,6 +52,11 @@ const initSocket = () => {
         text: `Nhân viên ${data.supporterName} đã tham gia phiên hỗ trợ.`
       });
       scrollToBottom();
+      
+      if (chatAudio) {
+        chatAudio.currentTime = 0;
+        chatAudio.play().catch(() => {});
+      }
     });
 
     // Nhận tin nhắn từ Discord gửi về Web
@@ -62,6 +70,11 @@ const initSocket = () => {
         imageUrl: data.imageUrl
       });
       scrollToBottom();
+      
+      if (chatAudio) {
+        chatAudio.currentTime = 0;
+        chatAudio.play().catch(() => {});
+      }
       
       // Bật Toast Notifications nếu người dùng đang ẩn chat
       if (!isOpen.value) {
@@ -201,8 +214,8 @@ const chatTitle = () => {
 
 <template>
   <div class="chat-container">
-    <!-- Chat Launcher Button -->
-    <button v-if="!isOpen" @click="openChat" class="chat-launcher animate-fade-in">
+    <!-- Chat Launcher Button (Only show if logged in and not open) -->
+    <button v-if="!isOpen && isLoggedIn" @click="openChat" class="chat-launcher animate-fade-in">
       <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
       </svg>

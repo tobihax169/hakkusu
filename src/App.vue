@@ -15,6 +15,15 @@ onMounted(() => {
 
 <template>
   <div class="app-root">
+    <!-- Animated Background Global -->
+    <div class="animated-bg">
+      <div class="grid-overlay"></div>
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+      <div class="orb orb-4"></div>
+    </div>
+
     <!-- Hiệu ứng Web Loading Toàn Tòa Khốc -->
     <transition name="fade">
       <div v-if="isLoading" class="global-loader-overlay">

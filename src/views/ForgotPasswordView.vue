@@ -128,7 +128,7 @@ const handleReset = async () => {
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  background: var(--bg-dark);
+  background: transparent;
 }
 
 .auth-container {
