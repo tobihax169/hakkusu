@@ -24,7 +24,10 @@ onMounted(() => {
     <header :class="{ 'glass': isScrolled }">
       <div class="container header-content">
         <!-- Logo bên trái, bấm vào về trang chủ -->
-        <a href="/" class="logo-text">Premium<span>Web</span></a>
+        <a href="/" class="logo-text">
+          <img src="/logo.png" alt="Hakkusu Logo" class="brand-logo" />
+          Hakkusu
+        </a>
         
           <!-- Các liên kết và nút bên phải -->
         <div class="header-right">
@@ -103,12 +106,22 @@ onMounted(() => {
 }
 
 .logo-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -1px;
   text-decoration: none;
   color: var(--text-main);
   transition: transform 0.3s ease;
+}
+
+.brand-logo {
+  height: 40px;
+  width: auto;
+  border-radius: 8px; /* Vì ảnh của user có góc hơi vuông */
+  object-fit: contain;
 }
 
 .logo-text:hover {

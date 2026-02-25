@@ -5,8 +5,7 @@ import { useAuth } from '../composables/useAuth';
 import { useToast } from '../composables/useToast';
 
 const router = useRouter();
-const { role, token, addToast } = useAuth();
-// the useAuth addToast is not actually there! Let's import useToast
+const { role, token } = useAuth();
 
 const { addToast: toast } = useToast();
 
@@ -163,15 +162,15 @@ const editBalance = (u) => {
                     <td>
                       <div class="d-flex align-items-center gap-2">
                         <img v-if="u.avatar" :src="u.avatar" class="mini-avatar" />
-                        <span v-else class="mini-avatar-text">{{ u.name.charAt(0) }}</span>
-                        <strong>{{ u.name }}</strong>
+                        <span v-else class="mini-avatar-text">{{ (u.name || '?').charAt(0) }}</span>
+                        <strong>{{ u.name || 'Người dùng' }}</strong>
                       </div>
                     </td>
                     <td>{{ u.email }}</td>
                     <td>
                       <span class="role-badge" :class="u.role">{{ u.role }}</span>
                     </td>
-                    <td class="text-success fw-bold">{{ u.balance.toLocaleString() }}đ</td>
+                    <td class="text-success fw-bold">{{ (u.balance || 0).toLocaleString() }}đ</td>
                     <td>
                       <button @click="editBalance(u)" class="action-btn btn-money" title="Sửa Tiền">💰</button>
                       <button @click="toggleRole(u)" class="action-btn btn-rule" title="Đổi Quyền">🛡️</button>
