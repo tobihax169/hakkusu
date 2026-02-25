@@ -1,19 +1,19 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
 import { useToast } from '../composables/useToast';
 import { useAnnouncement } from '../composables/useAnnouncement';
 
 const router = useRouter();
-const { role, token } = useAuth();
+const { role, token, userName } = useAuth();
 const { announcementText, setAnnouncement } = useAnnouncement();
 
 const { addToast: toast } = useToast();
 
 const users = ref([]);
 const tickets = ref([]);
-const activeTab = ref(role.value === 'admin' ? 'users' : 'tickets');
+const activeTab = ref(role.value === 'admin' ? 'dashboard' : 'tickets');
 const isLoading = ref(true);
 
 const fetchUsers = async () => {
@@ -119,7 +119,6 @@ const sendPushNotification = () => {
         toast('Vui lòng nhập nội dung Push Notification', 'error');
         return;
     }
-    // Set item to localStorage to trigger cross-tab 'storage' event listener in useToast
     localStorage.setItem('global_push_notif', JSON.stringify({
         message: pushText.value,
         t: Date.now()
@@ -128,294 +127,510 @@ const sendPushNotification = () => {
     pushText.value = '';
 };
 
+// Computed Stats
+const totalUsers = computed(() => users.value.length);
+const totalBalance = computed(() => users.value.reduce((sum, u) => sum + (u.balance || 0), 0));
+const totalTickets = computed(() => tickets.value.length);
+const waitingTickets = computed(() => tickets.value.filter(t => t.status === 'waiting').length);
 
 </script>
 
 <template>
-  <div class="dashboard-page">
-    <div class="container animate-slide-up">
-      <div v-if="isLoading" class="loader-container">
-        <div class="loader"></div>
-      </div>
+  <div class="vision-dashboard">
+    <div v-if="isLoading" class="loader-container">
+      <div class="loader"></div>
+    </div>
 
-      <div v-else class="dashboard-card glass">
-        <!-- Sidebar -->
-        <div class="dashboard-sidebar">
-          <div class="sidebar-header">
-            <h3>{{ role === 'admin' ? 'Quản Trị Viên' : 'Nhân Viên Hỗ Trợ' }}</h3>
-          </div>
-
-          <nav class="dashboard-nav">
-            <button v-if="role === 'admin'"
-              @click="activeTab = 'users'" 
-              :class="{ active: activeTab === 'users' }"
-              class="nav-btn"
-            >
-              👥 Quản lý Người dùng
-            </button>
-            <button 
-              @click="activeTab = 'tickets'" 
-              :class="{ active: activeTab === 'tickets' }"
-              class="nav-btn"
-            >
-              🎫 Quản lý Tickets
-            </button>
-            <button v-if="role === 'admin'"
-              @click="activeTab = 'settings'" 
-              :class="{ active: activeTab === 'settings' }"
-              class="nav-btn"
-            >
-              ⚙️ Cấu hình Hệ thống
-            </button>
-            <button @click="router.push('/')" class="nav-btn btn-home mt-auto">
-              🏠 Quay về
-            </button>
-          </nav>
+    <div v-else class="vision-layout">
+      <!-- Sidebar -->
+      <aside class="vision-sidebar">
+        <div class="sidebar-brand" @click="router.push('/')">
+          <img src="/logo.png" alt="Logo" class="brand-logo" />
+          <span>Hakkusu UI</span>
         </div>
+        
+        <hr class="sidebar-divider" />
+        
+        <div class="sidebar-menu">
+          <button v-if="role === 'admin'" @click="activeTab = 'dashboard'" :class="{ active: activeTab === 'dashboard' }" class="v-nav-item">
+            <span class="v-icon-box"><span class="material-symbols-outlined">home</span></span>
+            <span class="v-nav-text">Dashboard</span>
+          </button>
+          
+          <button v-if="role === 'admin'" @click="activeTab = 'users'" :class="{ active: activeTab === 'users' }" class="v-nav-item">
+            <span class="v-icon-box"><span class="material-symbols-outlined">group</span></span>
+            <span class="v-nav-text">Người dùng</span>
+          </button>
+          
+          <button @click="activeTab = 'tickets'" :class="{ active: activeTab === 'tickets' }" class="v-nav-item">
+            <span class="v-icon-box"><span class="material-symbols-outlined">confirmation_number</span></span>
+            <span class="v-nav-text">Tickets</span>
+          </button>
+          
+          <button v-if="role === 'admin'" @click="activeTab = 'settings'" :class="{ active: activeTab === 'settings' }" class="v-nav-item">
+            <span class="v-icon-box"><span class="material-symbols-outlined">settings</span></span>
+            <span class="v-nav-text">Hệ thống</span>
+          </button>
+          
+          <div class="sidebar-title">ACCOUNT PAGES</div>
+          <button @click="router.push('/profile')" class="v-nav-item">
+            <span class="v-icon-box"><span class="material-symbols-outlined">person</span></span>
+            <span class="v-nav-text">Profile</span>
+          </button>
+        </div>
+        
+        <div class="sidebar-help">
+          <div class="help-box">
+            <div class="help-icon"><span class="material-symbols-outlined">help</span></div>
+            <h4>Cần hỗ trợ?</h4>
+            <p>Vui lòng xem docs</p>
+            <button class="btn-help">DOCUMENTATION</button>
+          </div>
+        </div>
+      </aside>
 
-        <!-- Content Area -->
-        <div class="dashboard-content">
+      <!-- Main Content -->
+      <main class="vision-main">
+        <header class="vision-header">
+          <div class="header-breadcrumb">
+            <span class="light-text">Pages / </span> <span class="fw-bold">{{ activeTab }}</span>
+            <h2 class="page-title">{{ activeTab.charAt(0).toUpperCase() + activeTab.slice(1) }}</h2>
+          </div>
+          <div class="header-actions">
+            <div class="search-box">
+              <span class="material-symbols-outlined">search</span>
+              <input type="text" placeholder="Type here..." />
+            </div>
+            <button class="header-btn" @click="router.push('/')">
+              <span class="material-symbols-outlined">logout</span> Thoát
+            </button>
+          </div>
+        </header>
 
-          <!-- ADMIN: SETTINGS -->
-          <div v-if="activeTab === 'settings' && role === 'admin'" class="tab-pane animate-fade-in">
-            <h2 class="mb-3">⚙️ Cấu hình Hệ thống Tùy chỉnh</h2>
+        <div class="vision-content animate-fade-in">
+          
+          <!-- DASHBOARD OVERVIEW TAB -->
+          <div v-if="activeTab === 'dashboard' && role === 'admin'" class="tab-content">
+            <!-- Top Stats -->
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-info">
+                  <p class="stat-label">Tổng Doanh Thu</p>
+                  <h3 class="stat-value">{{ totalBalance.toLocaleString() }}đ <span class="text-success">+55%</span></h3>
+                </div>
+                <div class="stat-icon bg-blue"><span class="material-symbols-outlined">account_balance_wallet</span></div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-info">
+                  <p class="stat-label">Tổng Người Dùng</p>
+                  <h3 class="stat-value">{{ totalUsers }} <span class="text-success">+5%</span></h3>
+                </div>
+                <div class="stat-icon bg-blue"><span class="material-symbols-outlined">language</span></div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-info">
+                  <p class="stat-label">Tickets Chờ</p>
+                  <h3 class="stat-value">{{ waitingTickets }} <span class="text-danger">-14%</span></h3>
+                </div>
+                <div class="stat-icon bg-blue"><span class="material-symbols-outlined">description</span></div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-info">
+                  <p class="stat-label">Tổng Tickets</p>
+                  <h3 class="stat-value">{{ totalTickets }} <span class="text-success">+8%</span></h3>
+                </div>
+                <div class="stat-icon bg-blue"><span class="material-symbols-outlined">shopping_cart</span></div>
+              </div>
+            </div>
+
+            <!-- Dashboard Banners -->
+            <div class="banners-grid mt-4">
+              <div class="welcome-card">
+                <div class="welcome-content">
+                  <p class="w-subtitle">Welcome back,</p>
+                  <h2 class="w-title">{{ userName }}</h2>
+                  <p class="w-text">Glad to see you again!<br>Ask me anything.</p>
+                  <a href="#" class="w-link">Tap to record →</a>
+                </div>
+                <!-- CSS glowing ring on the right -->
+                <div class="welcome-bg-graphic"></div>
+              </div>
+
+              <div class="satisfaction-card">
+                <h3 class="card-title">Satisfaction Rate</h3>
+                <p class="card-subtitle">From all projects</p>
+                <div class="circle-chart">
+                  <div class="circle-inner">
+                    <span class="material-symbols-outlined icon-smile">sentiment_satisfied</span>
+                  </div>
+                  <div class="circle-text">
+                    <h2>95%</h2>
+                    <p>Based on likes</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="referral-card">
+                <h3 class="card-title">Referral Tracking</h3>
+                <div class="ref-content">
+                  <div class="ref-stats">
+                    <div class="ref-box">
+                      <p>Invited</p>
+                      <h4>145 people</h4>
+                    </div>
+                    <div class="ref-box">
+                      <p>Bonus</p>
+                      <h4>1,465</h4>
+                    </div>
+                  </div>
+                  <div class="ref-score">
+                    <div class="score-circle">
+                      <p>Safety</p>
+                      <h2>9.3</h2>
+                      <p>Total Score</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             
-            <div class="config-section glass p-4 mb-4">
-              <h4>1. Dòng thông báo nổi (Marquee Banner)</h4>
-              <p class="text-muted mb-2">Đoạn text sẽ chạy ngang bên dưới thanh Header ở Trang chủ.</p>
-              <div class="flex-row">
-                <input v-model="editAnnouncementText" class="custom-input flex-1" placeholder="Nhập text thông báo..." />
-                <button @click="saveAnnouncement" class="btn-primary">Lưu hiển thị</button>
-              </div>
-            </div>
-
-            <div class="config-section glass p-4">
-              <h4>2. Phát Push Notification Khẩn cấp</h4>
-              <p class="text-muted mb-2">Gửi Toast bật lên ở tất cả các tab người dùng đang mở kèm tiếng "Ting".</p>
-              <div class="flex-row">
-                <input v-model="pushText" class="custom-input flex-1" placeholder="Nhập nội dung thông báo đẩy cực mạnh..." />
-                <button @click="sendPushNotification" class="btn-primary alert-btn">🚨 Phát toàn Server</button>
+            <!-- Chart placeholder -->
+            <div class="chart-section mt-4">
+              <div class="chart-card">
+                <h3 class="card-title">Sales overview</h3>
+                <p class="card-subtitle"><span class="text-success">(+5) more</span> in 2026</p>
+                <div class="chart-placeholder">
+                  <!-- CSS wave graphic placeholder -->
+                  <div class="wave wave1"></div>
+                  <div class="wave wave2"></div>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- ADMIN: USERS -->
-          <div v-if="activeTab === 'users' && role === 'admin'" class="tab-pane animate-fade-in">
-            <h2 class="mb-3">Danh sách Người dùng</h2>
-            <div class="table-container">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Tên</th>
-                    <th>Email</th>
-                    <th>Quyền</th>
-                    <th>Số dư (VNĐ)</th>
-                    <th>Hành động</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="u in users" :key="u._id">
-                    <td>
-                      <div class="d-flex align-items-center gap-2">
-                        <img v-if="u.avatar" :src="u.avatar" class="mini-avatar" />
-                        <span v-else class="mini-avatar-text">{{ (u.name || '?').charAt(0) }}</span>
-                        <strong>{{ u.name || 'Người dùng' }}</strong>
-                      </div>
-                    </td>
-                    <td>{{ u.email }}</td>
-                    <td>
-                      <span class="role-badge" :class="u.role">{{ u.role }}</span>
-                    </td>
-                    <td class="text-success fw-bold">{{ (u.balance || 0).toLocaleString() }}đ</td>
-                    <td>
-                      <button @click="editBalance(u)" class="action-btn btn-money" title="Sửa Tiền">💰</button>
-                      <button @click="toggleRole(u)" class="action-btn btn-rule" title="Đổi Quyền">🛡️</button>
-                    </td>
-                  </tr>
-                  <tr v-if="users.length === 0">
-                    <td colspan="5" class="text-center">Chưa có dữ liệu</td>
-                  </tr>
-                </tbody>
-              </table>
+          <!-- USERS TAB -->
+          <div v-if="activeTab === 'users' && role === 'admin'" class="tab-content">
+            <div class="v-card">
+              <h3 class="card-title">Danh sách Người dùng</h3>
+              <div class="table-responsive mt-3">
+                <table class="v-table">
+                  <thead>
+                    <tr>
+                      <th>AUTHOR</th>
+                      <th>ROLE</th>
+                      <th>BALANCE</th>
+                      <th>ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="u in users" :key="u._id">
+                      <td>
+                        <div class="td-author">
+                          <div class="td-avatar">{{ (u.name || '?').charAt(0) }}</div>
+                          <div class="td-author-info">
+                            <h4>{{ u.name || 'Người dùng' }}</h4>
+                            <p>{{ u.email }}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span class="v-badge" :class="u.role">{{ u.role }}</span>
+                      </td>
+                      <td>
+                        <span class="td-money">{{ (u.balance || 0).toLocaleString() }}đ</span>
+                      </td>
+                      <td>
+                        <button class="v-action-btn edit" @click="editBalance(u)">💰</button>
+                        <button class="v-action-btn config" @click="toggleRole(u)">🛡️</button>
+                      </td>
+                    </tr>
+                    <tr v-if="users.length === 0">
+                      <td colspan="4" class="text-center">No users found.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
-          <!-- STAFF / ADMIN: TICKETS -->
-          <div v-if="activeTab === 'tickets'" class="tab-pane animate-fade-in">
-            <h2 class="mb-3">Tickets Hỗ trợ Trực tuyến</h2>
-            <div class="tickets-grid">
-              <div v-for="t in tickets" :key="t.ticketId" class="ticket-card glass-panel" :class="t.status">
-                <div class="ticket-header">
-                  <span class="badge" :class="'badge-' + t.status">
-                    {{ t.status === 'waiting' ? '⏳ Đang chờ' : (t.status === 'active' ? '🟢 Đang hỗ trợ' : 'Ngắt kết nối') }}
-                  </span>
-                  <strong class="ticket-id">{{ t.ticketId }}</strong>
+          <!-- TICKETS TAB -->
+          <div v-if="activeTab === 'tickets'" class="tab-content">
+            <div class="v-card">
+              <h3 class="card-title">Tickets Hỗ trợ Trực tuyến</h3>
+              <div class="tickets-grid mt-4">
+                <div v-for="t in tickets" :key="t.ticketId" class="t-card">
+                  <div class="t-header">
+                    <span class="v-badge" :class="'badge-' + t.status">
+                      {{ t.status === 'waiting' ? 'Waiting' : (t.status === 'active' ? 'Active' : 'Closed') }}
+                    </span>
+                    <span class="t-id">{{ t.ticketId }}</span>
+                  </div>
+                  <div class="t-body">
+                    <h4>{{ t.customerName }}</h4>
+                    <p v-if="t.supporterName">Supporter: <span>{{ t.supporterName }}</span></p>
+                  </div>
+                  <div class="t-footer">
+                    Manage in Discord
+                  </div>
                 </div>
-                <div class="ticket-body">
-                  <p>👤 Khách Hàng: <strong>{{ t.customerName }}</strong></p>
-                  <p v-if="t.supporterName">🛡️ Phụ trách: <strong>{{ t.supporterName }}</strong></p>
-                </div>
-                <div class="ticket-footer pt-3">
-                  <span class="small-text text-muted">Ticket này do Discord quản lý. Vui lòng mở Discord để chat & phân công.</span>
+                <div v-if="tickets.length === 0" class="empty-text">No tickets available.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SETTINGS TAB -->
+          <div v-if="activeTab === 'settings' && role === 'admin'" class="tab-content">
+            <div class="v-card">
+              <h3 class="card-title">Cấu hình Hệ thống Tùy chỉnh</h3>
+              
+              <div class="setting-block mt-4">
+                <h4>1. Dòng thông báo nổi (Marquee Banner)</h4>
+                <p>Chạy dọc dưới thanh Header ở Trang chủ.</p>
+                <div class="setting-input-group mt-2">
+                  <input v-model="editAnnouncementText" class="v-input" placeholder="Type banner message..." />
+                  <button @click="saveAnnouncement" class="v-btn">Save Setting</button>
                 </div>
               </div>
 
-              <div v-if="tickets.length === 0" class="empty-state">
-                <p>Không có yêu cầu hỗ trợ nào đang hoạt động lúc này.</p>
+              <div class="setting-block mt-4">
+                <h4>2. Phát Push Notification Khẩn cấp</h4>
+                <p>Gửi thông báo âm thanh nổi toàn hệ thống tới tất cả Client.</p>
+                <div class="setting-input-group mt-2">
+                  <input v-model="pushText" class="v-input" placeholder="Type push message..." />
+                  <button @click="sendPushNotification" class="v-btn btn-danger">Broadcast</button>
+                </div>
               </div>
             </div>
           </div>
 
         </div>
-      </div>
+      </main>
     </div>
   </div>
 </template>
 
 <style scoped>
-.flex-row {
-  display: flex;
-  gap: 10px;
-}
-.flex-1 { flex: 1; }
-.custom-input {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 10px 15px;
-  color: white;
-  outline: none;
-}
-.custom-input:focus { border-color: var(--primary); }
-.p-4 { padding: 20px; border-radius: 12px; }
-.mb-4 { margin-bottom: 20px; }
-.alert-btn { background: #ef4444 !important; }
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-.dashboard-page {
-  flex: 1;
-  display: flex;
-  padding: 80px 20px 50px;
-  background: var(--bg-main);
-  justify-content: center;
+.vision-dashboard {
+  min-height: 100vh;
+  background-color: #0b1437;
+  color: #fff;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  overflow-x: hidden;
 }
 
-.dashboard-card {
-  display: flex;
-  width: 100%;
-  max-width: 1100px;
-  min-height: 600px;
-  border-radius: 20px;
-  overflow: hidden;
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.loader-container {
-  display: flex;  align-items: center; justify-content: center; width: 100%; height: 500px;
-}
-.loader {
-  border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid var(--primary);
-  border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite;
-}
+/* Loader */
+.loader-container { display: flex; align-items: center; justify-content: center; height: 100vh; }
+.loader { border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #0075ff; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+.vision-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
 /* Sidebar */
-.dashboard-sidebar {
-  width: 280px;
-  background: rgba(15, 23, 42, 0.5);
+.vision-sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, rgba(17,28,68,0.8) 0%, rgba(17,28,68,0.4) 100%);
+  border-right: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  flex-direction: column;
   padding: 30px 20px;
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  position: fixed;
+  height: 100vh;
+  z-index: 100;
 }
 
-.sidebar-header h3 {
-  color: var(--primary-light);
-  font-size: 1.4rem;
-  margin-bottom: 2rem;
-  text-align: center;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  padding-bottom: 15px;
+.sidebar-brand { display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; }
+.brand-logo { height: 32px; }
+.sidebar-brand span { font-weight: 700; font-size: 1.2rem; letter-spacing: 0.5px; }
+
+.sidebar-divider { border: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); margin: 25px 0; }
+
+.sidebar-menu { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.v-nav-item {
+  display: flex; align-items: center; gap: 15px; background: transparent; border: none;
+  color: #a0aec0; padding: 12px 16px; border-radius: 15px; cursor: pointer; transition: all 0.3s;
+}
+.sidebar-title { font-size: 0.75rem; font-weight: 700; color: #fff; margin: 20px 0 10px 10px; letter-spacing: 0.5px; }
+
+.v-icon-box {
+  width: 30px; height: 30px; background: #1a2035; border-radius: 10px;
+  display: flex; justify-content: center; align-items: center; color: #0075ff; transition: 0.3s;
+}
+.v-icon-box span { font-size: 1.1rem; }
+.v-nav-text { font-weight: 600; font-size: 0.95rem; }
+
+.v-nav-item:hover { color: #fff; }
+.v-nav-item.active { background: #1a2035; color: #fff; }
+.v-nav-item.active .v-icon-box { background: #0075ff; color: #fff; }
+
+.sidebar-help { margin-top: auto; }
+.help-box {
+  background: linear-gradient(135deg, #0075ff 0%, #1a2035 100%);
+  border-radius: 15px; padding: 20px; text-align: left; position: relative; overflow: hidden;
+}
+.help-icon {
+  width: 35px; height: 35px; background: #fff; color: #0075ff; border-radius: 10px;
+  display: flex; justify-content: center; align-items: center; margin-bottom: 15px;
+}
+.help-box h4 { margin: 0; font-size: 1rem; color: #fff; font-weight: 700; }
+.help-box p { font-size: 0.8rem; color: #e2e8f0; margin: 5px 0 15px; }
+.btn-help { width: 100%; padding: 8px; background: #fff; color: #0f172a; border: none; border-radius: 8px; font-weight: 700; font-size: 0.75rem; cursor: pointer; }
+
+/* Main Content */
+.vision-main {
+  flex: 1;
+  margin-left: 260px;
+  padding: 30px 40px;
 }
 
-.dashboard-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  height: 100%;
+.vision-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;
+}
+.header-breadcrumb { color: #a0aec0; font-size: 0.9rem; }
+.light-text { opacity: 0.7; }
+.fw-bold { font-weight: 600; color: #fff; }
+.page-title { margin: 5px 0 0; font-size: 1.8rem; font-weight: 700; color: #fff; }
+
+.header-actions { display: flex; align-items: center; gap: 20px; }
+.search-box {
+  display: flex; align-items: center; gap: 10px; background: #0f1535; border: 1px solid rgba(255,255,255,0.1);
+  padding: 10px 15px; border-radius: 20px;
+}
+.search-box input { background: transparent; border: none; color: #fff; outline: none; font-family: inherit; }
+.search-box span { color: #a0aec0; font-size: 1.2rem; }
+.header-btn {
+  display: flex; align-items: center; gap: 5px; background: transparent; border: none; color: #fff;
+  font-weight: 600; cursor: pointer; font-size: 0.95rem; font-family: inherit;
 }
 
-.nav-btn {
-  background: transparent; border: none; color: var(--text-main); text-align: left;
-  padding: 12px 20px; border-radius: 10px; cursor: pointer; transition: all 0.2s; font-size: 1.05rem;
+/* Common Card */
+.v-card {
+  background: linear-gradient(127.09deg, rgba(6, 11, 40, 0.94) 19.41%, rgba(10, 14, 35, 0.49) 76.65%);
+  border-radius: 20px; padding: 25px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 25px;
 }
-.nav-btn:hover { background: rgba(255, 255, 255, 0.05); }
-.nav-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3); }
+.card-title { font-size: 1.2rem; font-weight: 700; margin: 0 0 5px; }
+.card-subtitle { font-size: 0.9rem; color: #a0aec0; margin: 0; }
+.text-success { color: #01b574; font-weight: 700; font-size: 0.9rem;}
+.text-danger { color: #e53e3e; font-weight: 700; font-size: 0.9rem;}
 
-.mt-auto { margin-top: auto; }
-.mb-3 { margin-bottom: 1.5rem; }
-.btn-home { color: var(--text-muted); }
-
-/* Content Area */
-.dashboard-content {
-  flex: 1; padding: 40px; overflow-y: auto; max-height: 80vh;
+/* Stats Grid */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.stat-card {
+  background: linear-gradient(127.09deg, rgba(6, 11, 40, 0.94) 19.41%, rgba(10, 14, 35, 0.49) 76.65%);
+  border-radius: 20px; padding: 20px; display: flex; justify-content: space-between; align-items: center;
+  border: 1px solid rgba(255,255,255,0.05);
 }
-.dashboard-content::-webkit-scrollbar { width: 6px; }
-.dashboard-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+.stat-label { color: #a0aec0; font-size: 0.85rem; font-weight: 700; margin: 0 0 5px; }
+.stat-value { margin: 0; font-size: 1.3rem; font-weight: 700; }
+.stat-icon { width: 45px; height: 45px; border-radius: 12px; display: flex; justify-content: center; align-items: center; color: #fff; }
+.bg-blue { background: #0075ff; }
 
-/* Table */
-.table-container {
-  overflow-x: auto; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);
+/* Banners Grid */
+.banners-grid { display: grid; grid-template-columns: 2fr 1fr 1.5fr; gap: 20px; }
+
+.welcome-card {
+  background: linear-gradient(127.09deg, rgba(6, 11, 40, 0.94) 19.41%, rgba(10, 14, 35, 0.49) 76.65%);
+  border-radius: 20px; padding: 30px; position: relative; overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between;
 }
-
-.data-table {
-  width: 100%; border-collapse: collapse; min-width: 700px;
-}
-
-.data-table th, .data-table td {
-  padding: 15px 20px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-
-.data-table th { color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;}
-
-.role-badge {
-  padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;
-}
-.role-badge.user { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; }
-.role-badge.staff { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-.role-badge.admin { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-
-.action-btn { background: rgba(255,255,255,0.1); border:none; padding: 8px; border-radius:8px; margin-right:5px; cursor: pointer; transition: 0.2s;}
-.action-btn:hover { transform: scale(1.1); background: rgba(255,255,255,0.2) }
-
-/* Mini avatar */
-.d-flex { display: flex; }
-.align-items-center { align-items: center; }
-.gap-2 { gap: 10px; }
-.mini-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
-.mini-avatar-text { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.9rem;}
-.text-success { color: #10b981; }
-
-/* Tickets */
-.tickets-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;
+.w-subtitle { color: #a0aec0; font-weight: 600; margin: 0 0 5px; }
+.w-title { font-size: 2rem; font-weight: 700; margin: 0 0 10px; }
+.w-text { color: #a0aec0; font-size: 0.95rem; line-height: 1.5; margin: 0 0 20px; }
+.w-link { color: #fff; font-weight: 600; text-decoration: none; font-size: 0.9rem; }
+.welcome-bg-graphic {
+  position: absolute; right: -50px; top: -50px; width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(0,117,255,0.4) 0%, rgba(0,0,0,0) 70%); border-radius: 50%;
 }
 
-.glass-panel { background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; }
-.ticket-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;}
-.ticket-id { font-family: monospace; font-size: 1.1rem; color: var(--primary-light);}
+.satisfaction-card {
+  background: linear-gradient(127.09deg, rgba(6, 11, 40, 0.94) 19.41%, rgba(10, 14, 35, 0.49) 76.65%);
+  border-radius: 20px; padding: 25px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column;
+}
+.circle-chart {
+  flex: 1; display: flex; justify-content: center; align-items: center; position: relative; margin-top: 20px;
+}
+.circle-inner { width: 120px; height: 120px; border-radius: 50%; border: 10px solid #0075ff; border-top-color: #1a2035; display: flex; justify-content: center; align-items: center; }
+.icon-smile { font-size: 2rem; color: #fff; background: #0075ff; border-radius: 50%; padding: 5px; transform: translateY(45px); }
+.circle-text { position: absolute; text-align: center; }
+.circle-text h2 { margin: 0; font-size: 1.8rem; }
+.circle-text p { margin: 0; font-size: 0.7rem; color: #a0aec0; }
 
-.badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
-.badge-waiting { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);}
-.badge-active { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);}
+.referral-card {
+  background: linear-gradient(127.09deg, rgba(6, 11, 40, 0.94) 19.41%, rgba(10, 14, 35, 0.49) 76.65%);
+  border-radius: 20px; padding: 25px; border: 1px solid rgba(255,255,255,0.05);
+}
+.ref-content { display: flex; justify-content: space-between; align-items: center; height: 100%; margin-top: 15px;}
+.ref-stats { display: flex; flex-direction: column; gap: 20px;}
+.ref-box p { color: #a0aec0; margin: 0 0 5px; font-size: 0.85rem;}
+.ref-box h4 { margin: 0; font-size: 1.2rem;}
+.score-circle {
+  width: 130px; height: 130px; border-radius: 50%; border: 8px solid #01b574;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+}
+.score-circle p { margin: 0; font-size: 0.8rem; color: #a0aec0;}
+.score-circle h2 { margin: 5px 0; font-size: 2rem;}
 
-.ticket-body p { margin: 5px 0; color: var(--text-main); }
-.pt-3 { padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); margin-top:15px; }
+/* Chart placeholder */
+.chart-card {
+  background: linear-gradient(127.09deg, rgba(6, 11, 40, 0.94) 19.41%, rgba(10, 14, 35, 0.49) 76.65%);
+  border-radius: 20px; padding: 25px; border: 1px solid rgba(255,255,255,0.05); min-height: 300px;
+}
+.chart-placeholder {
+  height: 200px; width: 100%; position: relative; overflow: hidden; margin-top: 20px;
+  background: linear-gradient(rgba(0,117,255,0.1), transparent); border-radius: 10px;
+}
+.wave {
+  position: absolute; bottom: 0; width: 200%; height: 100px; background: rgba(0, 117, 255, 0.3);
+  border-top: 3px solid #0075ff; border-radius: 50% 50% 0 0; animation: moveWave 10s linear infinite;
+}
+.wave2 { background: rgba(0, 117, 255, 0.1); border-top: 2px solid #0075ff; animation-duration: 7s; bottom: 20px;}
+@keyframes moveWave { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-.empty-state { grid-column: 1 / -1; text-align: center; padding: 50px; color: var(--text-muted); background: rgba(0,0,0,0.2); border-radius: 12px; }
+/* Table styling for Uses Tab */
+.table-responsive { overflow-x: auto; }
+.v-table { width: 100%; border-collapse: collapse; }
+.v-table th { color: #a0aec0; font-size: 0.8rem; text-align: left; padding: 15px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.v-table td { padding: 15px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.td-author { display: flex; align-items: center; gap: 15px; }
+.td-avatar { width: 40px; height: 40px; border-radius: 12px; background: #0075ff; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.2rem;}
+.td-author-info h4 { margin: 0; font-size: 0.95rem; }
+.td-author-info p { margin: 5px 0 0; font-size: 0.8rem; color: #a0aec0; }
+.v-badge { padding: 5px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+.v-badge.user { background: rgba(160, 174, 192, 0.2); color: #cbd5e1; }
+.v-badge.admin { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.v-badge.staff { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.td-money { font-weight: 700; color: #fff; }
+.v-action-btn { background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 6px; cursor: pointer; color:#fff; margin-right: 5px;}
+.v-action-btn:hover { background: rgba(255,255,255,0.1); }
 
-@keyframes slideUp { from { opacity:0; transform: translateY(20px); } to { opacity: 1; transform:translateY(0); } }
-.animate-slide-up { animation: slideUp 0.5s ease-out forwards; }
-@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-.animate-fade-in { animation: fade 0.4s ease forwards; }
+/* Tickets Grid */
+.tickets-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;}
+.t-card { background: rgba(15,21,53,0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 15px; padding: 20px;}
+.t-header { display: flex; justify-content: space-between; margin-bottom: 15px;}
+.badge-waiting { color: #f59e0b; } .badge-active { color: #10b981; }
+.t-id { color: #a0aec0; font-family: monospace; }
+.t-body h4 { margin: 0 0 5px; }
+.t-body p { margin: 0; color: #a0aec0; font-size: 0.85rem;}
+.t-body span { color: #fff;}
+.t-footer { margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 0.8rem; color: #a0aec0;}
+
+/* Settings */
+.setting-block { background: rgba(15,21,53,0.8); border: 1px solid rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; }
+.setting-block h4 { margin: 0 0 5px; }
+.setting-block p { margin: 0; color: #a0aec0; font-size: 0.9rem;}
+.setting-input-group { display: flex; gap: 10px; }
+.v-input { flex:1; background: #0f1535; border: 1px solid rgba(255,255,255,0.1); color:#fff; padding: 12px 15px; border-radius: 10px; outline:none; font-family:inherit;}
+.v-input:focus { border-color: #0075ff; }
+.v-btn { background: #0075ff; color: #fff; border: none; padding: 12px 25px; border-radius: 10px; font-weight: 600; cursor: pointer; font-family:inherit;}
+.v-btn.btn-danger { background: #ef4444; }
+
+.mt-2 { margin-top: 10px; }
+.mt-3 { margin-top: 15px; }
+.mt-4 { margin-top: 25px; }
+
 </style>
