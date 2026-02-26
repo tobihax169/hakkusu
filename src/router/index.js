@@ -3,6 +3,7 @@ import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import ProfileView from '../views/ProfileView.vue'
+import ServicesView from '../views/ServicesView.vue'
 import ForgotPasswordView from '../views/ForgotPasswordView.vue'
 import DashboardView from '../views/DashboardView.vue'
 
@@ -15,12 +16,17 @@ const router = createRouter({
       component: HomeView
     },
     {
-      path: '/login',
+      path: '/services',
+      name: 'services',
+      component: ServicesView
+    },
+    {
+      path: '/auth/login',
       name: 'login',
       component: LoginView
     },
     {
-      path: '/register',
+      path: '/auth/register',
       name: 'register',
       component: RegisterView
     },
@@ -30,7 +36,7 @@ const router = createRouter({
       component: ProfileView
     },
     {
-      path: '/forgot-password',
+      path: '/auth/forgot-password',
       name: 'forgot-password',
       component: ForgotPasswordView
     },

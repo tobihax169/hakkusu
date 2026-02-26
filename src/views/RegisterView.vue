@@ -42,7 +42,7 @@ const handleRegister = async () => {
       successMessage.value = 'Đăng ký thành công! Hãy đăng nhập.';
       addToast('Đăng ký thành công! Đang chuyển hướng...', 'success');
       setTimeout(() => {
-        router.push('/login');
+        router.push('/auth/login');
       }, 1500);
     } else {
       errorMessage.value = data.message;
@@ -99,7 +99,7 @@ const handleRegister = async () => {
         </form>
 
         <div class="auth-footer">
-          <p>Đã có tài khoản? <router-link to="/login">Đăng nhập</router-link></p>
+          <p>Đã có tài khoản? <router-link to="/auth/login">Đăng nhập</router-link></p>
         </div>
       </div>
     </div>
@@ -242,5 +242,14 @@ const handleRegister = async () => {
   padding: 10px;
   border-radius: 8px;
   border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+@media (max-width: 576px) {
+  .auth-container {
+    padding: 24px;
+  }
+  .auth-header h2 {
+    font-size: 1.5rem;
+  }
 }
 </style>

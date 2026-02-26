@@ -19,7 +19,7 @@ let typingTimeout = null;
 
 const goToLogin = () => {
   closeChat();
-  router.push('/login');
+  router.push('/auth/login');
 };
 
 const ticketIdState = ref('');
@@ -633,5 +633,14 @@ const chatTitle = () => {
   max-height: 180px;
   object-fit: contain;
   background: rgba(0,0,0,0.2);
+}
+
+@media (max-width: 400px) {
+  .chat-widget {
+    width: calc(100vw - 40px);
+    right: 20px;
+    bottom: 20px;
+    height: 70vh;
+  }
 }
 </style>

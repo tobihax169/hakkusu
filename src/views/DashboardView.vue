@@ -15,6 +15,11 @@ const users = ref([]);
 const tickets = ref([]);
 const activeTab = ref(role.value === 'admin' ? 'dashboard' : 'tickets');
 const isLoading = ref(true);
+const isSidebarOpen = ref(false);
+
+const toggleSidebar = () => {
+  isSidebarOpen.value = !isSidebarOpen.value;
+};
 
 const fetchUsers = async () => {
   try {
@@ -98,10 +103,10 @@ const toggleRole = (u) => {
    }
 }
 
-const editBalance = (u) => {
-   const newBal = prompt(`Nhập số dư mới cho ${u.name}:`, u.balance);
-   if(newBal !== null && !isNaN(newBal)) {
-       updateUserData(u._id, 'balance', Number(newBal));
+const toggleBan = (u) => {
+   const confirm = window.confirm(`Bạn có chắc muốn ${u.isBanned ? 'MỞ KHÓA' : 'KHÓA (BAN)'} tài khoản của ${u.name}?`);
+   if (confirm) {
+       updateUserData(u._id, 'isBanned', !u.isBanned);
    }
 }
 
@@ -127,6 +132,14 @@ const sendPushNotification = () => {
     pushText.value = '';
 };
 
+// System Maintenance Mode
+const isMaintenance = ref(localStorage.getItem('sys_maintenance') === 'true');
+const toggleMaintenance = () => {
+    isMaintenance.value = !isMaintenance.value;
+    localStorage.setItem('sys_maintenance', isMaintenance.value);
+    toast(`Chế độ bảo trì đã được ${isMaintenance.value ? 'BẬT' : 'TẮT'}.`, 'success');
+};
+
 // Computed Stats
 const totalUsers = computed(() => users.value.length);
 const totalBalance = computed(() => users.value.reduce((sum, u) => sum + (u.balance || 0), 0));
@@ -143,7 +156,8 @@ const waitingTickets = computed(() => tickets.value.filter(t => t.status === 'wa
 
     <div v-else class="vision-layout">
       <!-- Sidebar -->
-      <aside class="vision-sidebar">
+      <div v-if="isSidebarOpen" class="sidebar-overlay" @click="isSidebarOpen = false"></div>
+      <aside class="vision-sidebar" :class="{ 'open': isSidebarOpen }">
         <div class="sidebar-brand" @click="router.push('/')">
           <img src="/logo.png" alt="Logo" class="brand-logo" />
           <span>Hakkusu UI</span>
@@ -192,9 +206,14 @@ const waitingTickets = computed(() => tickets.value.filter(t => t.status === 'wa
       <!-- Main Content -->
       <main class="vision-main">
         <div class="vision-header">
-          <div class="header-breadcrumb">
-            <span class="light-text">Pages / </span> <span class="fw-bold">{{ activeTab }}</span>
-            <h2 class="page-title">{{ activeTab.charAt(0).toUpperCase() + activeTab.slice(1) }}</h2>
+          <div class="header-breadcrumb" style="display: flex; align-items: center; gap: 10px;">
+            <button class="mobile-toggle-btn" @click="toggleSidebar">
+              <span class="material-symbols-outlined">menu</span>
+            </button>
+            <div>
+              <span class="light-text">Pages / </span> <span class="fw-bold">{{ activeTab }}</span>
+              <h2 class="page-title">{{ activeTab.charAt(0).toUpperCase() + activeTab.slice(1) }}</h2>
+            </div>
           </div>
           <div class="header-actions">
             <div class="search-box">
@@ -337,11 +356,15 @@ const waitingTickets = computed(() => tickets.value.filter(t => t.status === 'wa
                         <span class="v-badge" :class="u.role">{{ u.role }}</span>
                       </td>
                       <td>
-                        <span class="td-money">{{ (u.balance || 0).toLocaleString() }}đ</span>
+                        <span class="td-money" :class="{ 'text-danger': u.isBanned }">
+                          {{ u.isBanned ? 'BANNED' : (u.balance || 0).toLocaleString() + 'đ' }}
+                        </span>
                       </td>
                       <td>
-                        <button class="v-action-btn edit" @click="editBalance(u)">💰</button>
-                        <button class="v-action-btn config" @click="toggleRole(u)">🛡️</button>
+                        <button class="v-action-btn danger" @click="toggleBan(u)" :title="u.isBanned ? 'Mở khóa kết nối' : 'Khóa tài khoản'">
+                          {{ u.isBanned ? '🔓' : '🔒' }}
+                        </button>
+                        <button class="v-action-btn config" @click="toggleRole(u)" title="Chỉnh quyền hạn">🛡️</button>
                       </td>
                     </tr>
                     <tr v-if="users.length === 0">
@@ -398,6 +421,19 @@ const waitingTickets = computed(() => tickets.value.filter(t => t.status === 'wa
                 <div class="setting-input-group mt-2">
                   <input v-model="pushText" class="v-input" placeholder="Type push message..." />
                   <button @click="sendPushNotification" class="v-btn btn-danger">Broadcast</button>
+                </div>
+              </div>
+
+              <div class="setting-block mt-4">
+                <h4>3. Bật/Tắt Chế Độ Bảo Trì</h4>
+                <p>Chặn người dùng thường đăng nhập và thực hiện thao tác tạo ticket. Admin vẫn có thể vào.</p>
+                <div class="setting-input-group mt-2">
+                  <div class="maintenance-status" :class="isMaintenance ? 'text-danger' : 'text-success'">
+                    Trạng thái hiện tại: <strong>{{ isMaintenance ? 'Đang Bảo Trì' : 'Hoạt Động Bình Thường' }}</strong>
+                  </div>
+                  <button @click="toggleMaintenance" class="v-btn" :class="isMaintenance ? 'btn-success' : 'btn-danger'" style="margin-left:auto;">
+                    {{ isMaintenance ? 'Tắt Bảo Trì' : 'Bật Bảo Trì' }}
+                  </button>
                 </div>
               </div>
             </div>
@@ -639,5 +675,73 @@ const waitingTickets = computed(() => tickets.value.filter(t => t.status === 'wa
 .mt-2 { margin-top: 10px; }
 .mt-3 { margin-top: 15px; }
 .mt-4 { margin-top: 25px; }
+
+/* Mobile Responsiveness */
+.mobile-toggle-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 90;
+  backdrop-filter: blur(4px);
+}
+
+@media (max-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .banners-grid {
+    grid-template-columns: 1fr;
+  }
+  .vision-main {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .vision-sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  .vision-sidebar.open {
+    transform: translateX(0);
+  }
+  .sidebar-overlay {
+    display: block;
+  }
+  .vision-main {
+    margin-left: 0;
+    padding: 15px;
+  }
+  .mobile-toggle-btn {
+    display: block;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .header-actions {
+    gap: 10px;
+  }
+  .search-box {
+    display: none; /* Hide search box on very small screens or make it an icon */
+  }
+  .vision-header {
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  .td-author {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
 
 </style>

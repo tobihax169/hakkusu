@@ -44,7 +44,7 @@ onMounted(async () => {
   const token = authStateToken.value;
   if (!token) {
     addToast('Vui lòng đăng nhập để truy cập!', 'error');
-    router.push('/login');
+    router.push('/auth/login');
     return;
   }
 
@@ -59,7 +59,7 @@ onMounted(async () => {
     } else {
       clearAuth();
       addToast('Phiên đăng nhập hết hạn!', 'error');
-      router.push('/login');
+      router.push('/auth/login');
     }
   } catch (error) {
     addToast('Lỗi tải dữ liệu cá nhân', 'error');
@@ -567,6 +567,30 @@ const handleLogout = () => {
 }
 
 .text-warning { color: #f59e0b; }
+
+@media (max-width: 768px) {
+  .profile-card {
+    flex-direction: column;
+  }
+  .profile-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .profile-content {
+    padding: 20px;
+  }
+  .bank-card {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .syntax-code {
+    flex-direction: column;
+    gap: 15px;
+    font-size: 1.2rem;
+  }
+}
 
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 .animate-fade-in { animation: fade 0.4s ease forwards; }

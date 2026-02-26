@@ -61,7 +61,7 @@ const handleLogin = async () => {
             <label>Mật khẩu</label>
             <input v-model="formData.password" type="password" placeholder="••••••••" required />
             <div class="text-right mt-2">
-              <router-link to="/forgot-password" class="forgot-link">Bạn quên mật khẩu?</router-link>
+              <router-link to="/auth/forgot-password" class="forgot-link">Bạn quên mật khẩu?</router-link>
             </div>
           </div>
 
@@ -73,7 +73,7 @@ const handleLogin = async () => {
         </form>
 
         <div class="auth-footer">
-          <p>Chưa có tài khoản? <router-link to="/register">Đăng ký ngay</router-link></p>
+          <p>Chưa có tài khoản? <router-link to="/auth/register">Đăng ký ngay</router-link></p>
         </div>
       </div>
     </div>
@@ -220,5 +220,14 @@ const handleLogin = async () => {
   padding: 10px;
   border-radius: 8px;
   border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+@media (max-width: 576px) {
+  .auth-container {
+    padding: 24px;
+  }
+  .auth-header h2 {
+    font-size: 1.5rem;
+  }
 }
 </style>

@@ -56,7 +56,7 @@ const handleReset = async () => {
     const data = await res.json();
     if (data.success) {
       addToast('Khôi phục mật khẩu thành công! Hãy đăng nhập.', 'success');
-      setTimeout(() => router.push('/login'), 1500);
+      setTimeout(() => router.push('/auth/login'), 1500);
     } else {
       addToast(data.message, 'error');
     }
@@ -72,7 +72,7 @@ const handleReset = async () => {
   <div class="auth-page">
     <div class="container">
       <div class="auth-container glass animate-scale-in">
-        <router-link to="/login" class="back-link">&larr; Quay lại đăng nhập</router-link>
+        <router-link to="/auth/login" class="back-link">&larr; Quay lại đăng nhập</router-link>
         
         <div class="auth-header">
           <h2>Quên mật khẩu?</h2>

@@ -42,26 +42,6 @@
   <div id="app"></div>
   <script type="module" src="/src/main.js"></script>
 
-  <script>
-    // Chống chuột phải (Context Menu)
-    document.addEventListener('contextmenu', event => event.preventDefault());
-
-    // Chống Inspect Element (F12, Ctrl+Shift+I, v.v.)
-    document.addEventListener('keydown', function (event) {
-      if (
-        event.key === 'F12' ||
-        (event.ctrlKey && event.shiftKey && (event.key === 'I' || event.key === 'i')) ||
-        (event.ctrlKey && event.shiftKey && (event.key === 'J' || event.key === 'j')) ||
-        (event.ctrlKey && event.shiftKey && (event.key === 'C' || event.key === 'c')) ||
-        (event.ctrlKey && (event.key === 'U' || event.key === 'u')) ||
-        (event.ctrlKey && (event.key === 'S' || event.key === 's')) ||
-        (event.ctrlKey && (event.key === 'P' || event.key === 'p')) ||
-        (event.ctrlKey && (event.key === 'A' || event.key === 'a')) // Chống Ctrl+A bôi đen
-      ) {
-        event.preventDefault();
-      }
-    });
-  </script>
 </body>
 
 </html>
