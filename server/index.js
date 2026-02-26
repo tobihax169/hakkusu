@@ -26,6 +26,20 @@ const io = new Server(server, {
   }
 });
 
+// -- KHỞI TẠO DISCORD BOT --
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessageTyping,
+  ]
+});
+
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+const SUPPORT_CHANNEL_ID = process.env.SUPPORT_CHANNEL_ID;
+const SUPPORT_ROLE_ID = process.env.SUPPORT_ROLE_ID;
+
 // -- TRẠNG THÁI SERVER --
 // Lưu trữ các phòng chat đang hoạt động
 const activeTickets = new Map(); // key: ticketId, value: { customerName, socketId, channelId, status }
@@ -34,7 +48,7 @@ const activeTickets = new Map(); // key: ticketId, value: { customerName, socket
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    
+
     // Kiểm tra xem email đã tồn tại chưa
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -55,7 +69,7 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     // Tìm user
     const user = await User.findOne({ email });
     if (!user) {
@@ -75,8 +89,8 @@ app.post('/api/auth/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Đăng nhập thành công!',
       token,
       user: {
@@ -98,11 +112,11 @@ app.get('/api/auth/me', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ success: false, message: 'Không tìm thấy Token' });
-    
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
     const user = await User.findById(decoded.userId).select('-password');
     if (!user) return res.status(404).json({ success: false, message: 'Người dùng không tồn tại' });
-    
+
     res.json({ success: true, user });
   } catch (error) {
     res.status(401).json({ success: false, message: 'Token không hợp lệ hoặc đã hết hạn.' });
@@ -116,7 +130,7 @@ const requireRole = (roles) => {
     try {
       const token = req.headers.authorization?.split(' ')[1];
       if (!token) return res.status(401).json({ success: false, message: 'Không có quyền truy cập.' });
-      
+
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
       const user = await User.findById(decoded.userId);
       if (!user || !roles.includes(user.role)) {
@@ -124,8 +138,8 @@ const requireRole = (roles) => {
       }
       req.user = user;
       next();
-    } catch(err) {
-       res.status(401).json({ success: false, message: 'Phiên đăng nhập hết hạn.' });
+    } catch (err) {
+      res.status(401).json({ success: false, message: 'Phiên đăng nhập hết hạn.' });
     }
   }
 };
@@ -159,15 +173,15 @@ app.put('/api/admin/users/:id', requireRole(['admin']), async (req, res) => {
 app.get('/api/staff/tickets', requireRole(['admin', 'staff']), (req, res) => {
   try {
     const tickets = Array.from(activeTickets.entries()).map(([id, info]) => {
-        return {
-           ticketId: id,
-           customerName: info.customerName,
-           status: info.status,
-           supporterName: info.supporterName || null
-        };
+      return {
+        ticketId: id,
+        customerName: info.customerName,
+        status: info.status,
+        supporterName: info.supporterName || null
+      };
     });
     res.json({ success: true, tickets });
-  } catch(error) {
+  } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi khi tải Tickets' });
   }
 });
@@ -193,7 +207,7 @@ app.post('/api/webhook/bank', async (req, res) => {
     // Chỉ sử lý tiền VÀO
     if (transferType === 'in' && transferAmount > 0 && transferContent) {
       const contentUpper = transferContent.toUpperCase();
-      
+
       // Tìm xem nội dung có chữ NAP <tên> không
       if (contentUpper.includes('NAP ')) {
         // Trích xuất "Tên", ví dụ từ "NAP HAX 12345" -> lấy "HAX"
@@ -212,10 +226,10 @@ app.post('/api/webhook/bank', async (req, res) => {
             targetUser.balance += Number(transferAmount);
             await targetUser.save();
             console.log(`[BANK WEBHOOK] ✅ Đã tự động cộng ${transferAmount} vnđ cho ${targetUser.name}`);
-            
+
             // THÔNG BÁO VỀ WEB QUA SOCKET NẾU USER ĐANG ONLINE (Tùy chọn tương lai nâng cấp)
           } else {
-             console.log(`[BANK WEBHOOK] ❌ Không tìm thấy user nào trùng khớp cú pháp: ${rawName}`);
+            console.log(`[BANK WEBHOOK] ❌ Không tìm thấy user nào trùng khớp cú pháp: ${rawName}`);
           }
         }
       }
@@ -233,10 +247,10 @@ app.put('/api/auth/profile/avatar', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ success: false, message: 'Xác thực thất bại' });
-    
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
     const { avatar } = req.body;
-    
+
     await User.findByIdAndUpdate(decoded.userId, { avatar });
     res.json({ success: true, message: 'Cập nhật Avatar thành công!', avatar });
   } catch (error) {
@@ -252,17 +266,17 @@ app.put('/api/auth/profile/username', async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
     const user = await User.findById(decoded.userId);
-    
+
     // Kiểm tra thời gian đổi lần cuối
     if (user.lastUsernameChange) {
       const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
       const timeSinceLastChange = Date.now() - new Date(user.lastUsernameChange).getTime();
-      
+
       if (timeSinceLastChange < SEVEN_DAYS) {
         const daysLeft = Math.ceil((SEVEN_DAYS - timeSinceLastChange) / (1000 * 60 * 60 * 24));
-        return res.status(400).json({ 
-          success: false, 
-          message: `Bạn chỉ có thể đổi tên 7 ngày 1 lần. Vui lòng đợi ${daysLeft} ngày nữa.` 
+        return res.status(400).json({
+          success: false,
+          message: `Bạn chỉ có thể đổi tên 7 ngày 1 lần. Vui lòng đợi ${daysLeft} ngày nữa.`
         });
       }
     }
@@ -293,7 +307,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
     // Tạo mã code 6 số ngẫu nhiên
     const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
-    
+
     user.resetPasswordToken = crypto.createHash('sha256').update(resetCode).digest('hex');
     user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // Có mã trong 10 phút
     await user.save();
@@ -337,24 +351,12 @@ app.post('/api/auth/reset-password', async (req, res) => {
     await user.save();
 
     res.json({ success: true, message: 'Mật khẩu đã được đặt lại thành công!' });
-  } catch(error) {
+  } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi máy chủ.' });
   }
 });
 
-// -- KHỞI TẠO DISCORD BOT --
-const client = new Client({ 
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMessageTyping,
-  ] 
-});
-
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const SUPPORT_CHANNEL_ID = process.env.SUPPORT_CHANNEL_ID;
-const SUPPORT_ROLE_ID = process.env.SUPPORT_ROLE_ID;
+// -- XỬ LÝ SỰ KIỆN DISCORD BOT --
 
 client.once('ClientReady', () => {
   console.log(`🤖 Discord Bot đã online với tên: ${client.user.tag}`);
@@ -390,7 +392,7 @@ client.on('interactionCreate', async interaction => {
     // Tạo Kênh (Channel) 
     const supportChannel = await client.channels.fetch(SUPPORT_CHANNEL_ID);
     const guild = supportChannel.guild;
-    
+
     // Tìm danh mục (Category) của kênh support để tạo kênh ticket nằm chung danh mục
     const categoryId = supportChannel.parentId;
 
@@ -405,7 +407,7 @@ client.on('interactionCreate', async interaction => {
     activeTickets.set(ticketId, ticketInfo);
 
     // Báo cho Supporter biết
-    await interaction.update({ 
+    await interaction.update({
       content: `✅ Bạn đã nhận hỗ trợ **${ticketInfo.customerName}**. Xử lý tại: <#${ticketChannel.id}>`,
       components: [] // Xóa nút nhận đi
     });
@@ -418,9 +420,9 @@ client.on('interactionCreate', async interaction => {
         .setStyle(ButtonStyle.Danger),
     );
 
-    await ticketChannel.send({ 
-       content: `Xin chào <@${interaction.user.id}>, bạn đang hỗ trợ khách hàng **${ticketInfo.customerName}**.\nGõ tin nhắn tại đây để chat với khách.\nKhi hỗ trợ xong, hãy bấm nút Đóng Ticket bên dưới.`,
-       components: [rowClose]
+    await ticketChannel.send({
+      content: `Xin chào <@${interaction.user.id}>, bạn đang hỗ trợ khách hàng **${ticketInfo.customerName}**.\nGõ tin nhắn tại đây để chat với khách.\nKhi hỗ trợ xong, hãy bấm nút Đóng Ticket bên dưới.`,
+      components: [rowClose]
     });
 
     // Báo về cho Website (Khách hàng) biết là Supporter đã nhận
@@ -443,9 +445,9 @@ client.on('interactionCreate', async interaction => {
             files.push(new AttachmentBuilder(buffer, { name: 'upload.png' }));
           } catch (e) { console.error(e); }
         }
-        await ticketChannel.send({ 
-          content: `**[${ticketInfo.customerName} (Lúc chờ)]**: ${msg.text || '[Đã gửi một ảnh]'}`, 
-          files 
+        await ticketChannel.send({
+          content: `**[${ticketInfo.customerName} (Lúc chờ)]**: ${msg.text || '[Đã gửi một ảnh]'}`,
+          files
         });
       }
       ticketInfo.messageQueue = []; // Clear
@@ -477,7 +479,7 @@ client.on('interactionCreate', async interaction => {
       setTimeout(async () => {
         await interaction.channel.delete();
       }, 3000);
-    } catch(err) {
+    } catch (err) {
       console.error(err);
     }
   }
@@ -556,7 +558,7 @@ io.on('connection', (socket) => {
     // --- GỬI THÔNG BÁO LÊN DISCORD CHO SUPPORTER ---
     try {
       const channel = await client.channels.fetch(SUPPORT_CHANNEL_ID);
-      
+
       const embed = new EmbedBuilder()
         .setColor('#10b981') // Màu xanh lá Premium
         .setTitle('🚨 CÓ YÊU CẦU HỖ TRỢ MỚI!')
@@ -600,7 +602,7 @@ io.on('connection', (socket) => {
       if (ticketInfo.status === 'active' && ticketInfo.channelId) {
         try {
           const ticketChannel = await client.channels.fetch(ticketInfo.channelId);
-          await ticketChannel.send({ 
+          await ticketChannel.send({
             content: `**[${ticketInfo.customerName}]**: ${text || '[Đã gửi một ảnh]'}`,
             files
           });

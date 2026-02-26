@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick, computed } from 'vue';
+import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 
 // State
@@ -119,6 +119,14 @@ const openChat = () => {
   }
 };
 
+onMounted(() => {
+  window.addEventListener('open-chat', openChat);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('open-chat', openChat);
+});
+
 const fileInput = ref(null);
 
 const triggerFileInput = () => {
@@ -214,8 +222,8 @@ const chatTitle = () => {
 
 <template>
   <div class="chat-container">
-    <!-- Chat Launcher Button (Only show if logged in and not open) -->
-    <button v-if="!isOpen && isLoggedIn" @click="openChat" class="chat-launcher animate-fade-in">
+    <!-- Chat Launcher Button -->
+    <button v-if="!isOpen" @click="openChat" class="chat-launcher animate-fade-in">
       <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
       </svg>

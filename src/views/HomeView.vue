@@ -22,6 +22,14 @@ const toggleLang = () => {
   localStorage.setItem('lang', locale.value)
 }
 
+const handleContact = () => {
+  if (!userName.value) {
+    router.push('/auth/login')
+  } else {
+    window.dispatchEvent(new CustomEvent('open-chat'))
+  }
+}
+
 const fetchBalance = async () => {
   if (!token.value) return;
   try {
@@ -242,7 +250,7 @@ onMounted(() => {
             <li><a href="#">Trung tâm trợ giúp</a></li>
             <li><a href="#">Điều khoản dịch vụ</a></li>
             <li><a href="#">Chính sách bảo mật</a></li>
-            <li><a href="#">Liên hệ</a></li>
+            <li><a href="#" @click.prevent="handleContact">Liên hệ</a></li>
           </ul>
         </div>
 

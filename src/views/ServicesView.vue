@@ -13,8 +13,7 @@ const handleContact = () => {
   if (!userName.value) {
     router.push('/auth/login')
   } else {
-    // If we have a global way to open chat, we could trigger it. For now, open dashboard or emit event.
-    router.push('/dashboard')
+    window.dispatchEvent(new CustomEvent('open-chat'))
   }
 }
 
@@ -26,7 +25,7 @@ onMounted(() => {
 <template>
   <div class="services-page app-wrapper">
     <!-- Navbar (Basic clone from Home for standalone page, but with back link) -->
-    <header class="glass sticky-top">
+    <header>
       <div class="header-content">
         <router-link to="/" class="logo-text">
           <img src="/logo.png" alt="Hakkusu Logo" class="brand-logo" />
@@ -39,11 +38,11 @@ onMounted(() => {
           </nav>
           <div class="auth-buttons">
             <template v-if="userName">
-              <router-link to="/dashboard" class="btn-action rounded-pill btn-glow" v-if="role === 'admin' || role === 'staff'">Mở Panel</router-link>
-              <router-link to="/profile" class="btn-primary rounded-pill btn-glow" v-else>Client Panel</router-link>
+              <router-link to="/dashboard" class="btn-primary btn-pulse" v-if="role === 'admin' || role === 'staff'">Mở Panel</router-link>
+              <router-link to="/profile" class="btn-primary" v-else>Client Panel</router-link>
             </template>
             <template v-else>
-              <router-link to="/auth/login" class="btn-primary rounded-pill btn-glow px-4">Đăng nhập</router-link>
+              <router-link to="/auth/login" class="btn-primary btn-pulse">Đăng nhập</router-link>
             </template>
           </div>
         </div>
@@ -146,11 +145,11 @@ onMounted(() => {
       </section>
 
       <!-- CTA -->
-      <section class="cta-section container text-center mb-5">
-         <div class="cta-box glass p-5 rounded-3xl animate-scale-in">
+      <section class="cta-section container">
+         <div class="cta-box glass animate-scale-in">
             <h2>Bạn Cần Một Giải Pháp Tùy Chỉnh Khác?</h2>
-            <p class="text-muted mt-2 mb-4">Chúng tôi luôn sẵn sàng lắng nghe mọi ý tưởng của bạn và biến nó thành hiện thực với chi phí tối ưu nhất.</p>
-            <button @click="handleContact" class="btn-glow btn-action px-5 py-3 text-lg">Chat Với Chăm Sóc Khách Hàng</button>
+            <p>Chúng tôi luôn sẵn sàng lắng nghe mọi ý tưởng của bạn và biến nó thành hiện thực với chi phí tối ưu nhất.</p>
+            <button @click="handleContact" class="btn-glow btn-action cta-btn">Chat Với Chăm Sóc Khách Hàng</button>
          </div>
       </section>
     </main>
@@ -194,57 +193,87 @@ onMounted(() => {
   flex-direction: column;
 }
 
-.sticky-top {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  background: rgba(11, 17, 32, 0.75);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+header {
+  position: fixed;
+  top: 15px; 
+  left: 50%;
+  transform: translateX(-50%);
+  width: 95%;
+  max-width: 1200px;
+  z-index: 100;
+  border-radius: 50px;
+  background: rgba(11, 17, 32, 0.85);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .header-content {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 1rem 5%;
-  max-width: 1400px;
-  margin: 0 auto;
+  align-items: center;
+  width: 100%;
+  padding: 0.8rem 2.5rem;
 }
 
 .logo-text {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: #fff;
-  text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -1px;
+  text-decoration: none;
+  color: #fff;
 }
-.brand-logo { height: 40px; }
+
+.brand-logo {
+  height: 40px;
+  width: auto;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+}
+
+.desktop-nav {
+  display: flex;
+  gap: 2.5rem;
+}
 
 .desktop-nav a {
-  color: #94a3b8;
-  font-weight: 500;
+  color: #cbd5e1;
   text-decoration: none;
-  font-size: 1.05rem;
+  font-weight: 500;
+  font-size: 0.95rem;
   transition: color 0.3s;
-  margin-right: 30px;
+  position: relative;
+  padding: 5px 0;
 }
-.desktop-nav a:hover, .desktop-nav a.active {
-  color: #38bdf8;
-  text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+.desktop-nav a::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: 0;
+  left: 0;
+  background-color: #38bdf8;
+  transition: width 0.3s ease;
 }
+.desktop-nav a:hover, .desktop-nav a.active { color: #fff; }
+.desktop-nav a:hover::after, .desktop-nav a.active::after { width: 100%; }
 
 .auth-buttons {
   display: flex;
-  gap: 15px;
   align-items: center;
 }
 
 /* Page content */
 .page-hero {
-  padding-top: 80px;
+  padding-top: 150px;
   padding-bottom: 40px;
 }
 
@@ -363,6 +392,46 @@ onMounted(() => {
 .btn-orange { background: linear-gradient(90deg, #f97316, #fb923c); box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4); }
 .btn-orange:hover { box-shadow: 0 6px 20px rgba(249, 115, 22, 0.6); }
 
+.btn-primary {
+  background: linear-gradient(90deg, #0ea5e9, #3b82f6);
+  border: none;
+  color: white;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 8px 20px;
+}
+.btn-primary:hover {
+  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.6);
+  transform: translateY(-2px);
+  color: white;
+}
+
+.btn-pulse {
+  position: relative;
+  overflow: hidden;
+}
+.btn-pulse::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
+  transform: rotate(30deg) translateX(-100%);
+  animation: shine 3s infinite;
+}
+@keyframes shine {
+  0% { transform: rotate(30deg) translateX(-100%); }
+  15%, 100% { transform: rotate(30deg) translateX(100%); }
+}
+
 .ml-3 { margin-left: 1rem; }
 .arr { font-size: 1rem; margin-left: 8px; }
 
@@ -455,6 +524,37 @@ onMounted(() => {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* CTA Box Details */
+.cta-section {
+  margin-bottom: 4rem;
+  margin-top: 2rem;
+}
+
+.cta-box {
+  padding: 3rem;
+  border-radius: 24px;
+  text-align: center;
+}
+
+.cta-box h2 {
+  font-size: 2rem;
+  color: white;
+  margin-bottom: 15px;
+  font-weight: 700;
+}
+
+.cta-box p {
+  color: #94a3b8;
+  margin-bottom: 2rem;
+  font-size: 1.1rem;
+}
+
+.cta-btn {
+  padding: 14px 30px;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 /* Modern Footer Clone */
