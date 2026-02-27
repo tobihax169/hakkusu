@@ -32,9 +32,9 @@ onMounted(() => {
   <div class="services-page app-wrapper">
     <main class="services-content">
       <!-- Page Header -->
-      <section class="page-hero text-center container">
-        <div class="animate-fade-up">
-          <span class="badge text-uppercase tracking-widest text-cyan mb-3">Premium Solutions</span>
+      <section class="page-hero container">
+        <div class="animate-fade-up text-center">
+          <span class="badge text-uppercase tracking-widest text-cyan mb-3">Giải Pháp</span>
           <h1 class="gradient-text title-huge">Khám Phá Dịch Vụ Của Hakkusu</h1>
           <p class="subtitle mt-3">Chúng tôi cung cấp các giải pháp tối ưu và chuyên nghiệp nhất cho Server Discord & Minecraft của bạn.</p>
         </div>
@@ -62,7 +62,7 @@ onMounted(() => {
           </div>
           <div class="s-image animate-fade-in-right">
              <div class="mockup-card glass">
-                <img src="https://images.unsplash.com/photo-1620712943543-bcc4628c9757?auto=format&fit=crop&q=80&w=800" alt="Bot Discord" class="service-img"/>
+                <img src="https://images.unsplash.com/photo-1633356122544-f134324a6cee?auto=format&fit=crop&q=80&w=800" alt="Bot Discord" class="service-img"/>
              </div>
           </div>
         </div>
@@ -71,7 +71,7 @@ onMounted(() => {
         <div class="service-row reverse mt-huge">
           <div class="s-image animate-fade-in-left">
              <div class="mockup-card glass">
-                <img src="https://images.unsplash.com/photo-1614680376593-902f74cc0d41?auto=format&fit=crop&q=80&w=800" alt="Discord Setup" class="service-img"/>
+                <img src="https://images.unsplash.com/photo-1614680376739-414d95ff43df?auto=format&fit=crop&q=80&w=800" alt="Discord Setup" class="service-img"/>
              </div>
           </div>
           <div class="s-info animate-fade-in-right">
@@ -112,7 +112,7 @@ onMounted(() => {
           </div>
           <div class="s-image animate-fade-in-right">
              <div class="mockup-card glass">
-                <img src="https://images.unsplash.com/photo-1587573089734-09cb94300c73?auto=format&fit=crop&q=80&w=800" alt="Minecraft Setup" class="service-img"/>
+                <img src="https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&q=80&w=800" alt="Minecraft Setup" class="service-img"/>
              </div>
           </div>
         </div>
@@ -148,6 +148,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  text-align: center;
 }
 .badge { 
   display: inline-flex;
@@ -155,11 +156,12 @@ onMounted(() => {
   justify-content: center;
   background: rgba(56, 189, 248, 0.1); 
   border: 1px solid rgba(56, 189, 248, 0.3); 
-  padding: 6px 16px; 
+  padding: 8px 20px; 
   border-radius: 20px; 
   color: #22d3ee; 
-  font-size: 0.85rem; 
+  font-size: 1rem; 
   font-weight: 600; 
+  letter-spacing: 2px;
   margin-bottom: 25px;
 }
 .title-huge { font-size: 3.5rem; font-weight: 800; margin-bottom: 1.5rem; display: block; }

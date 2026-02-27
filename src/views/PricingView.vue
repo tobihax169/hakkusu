@@ -9,14 +9,17 @@ onMounted(() => {
 <template>
   <div class="app-wrapper">
     <main class="page-content">
-      <!-- Pricing Plans -->
-      <section class="container mb-5 pb-5 pt-5 mt-5">
-        <div class="text-center animate-fade-up header-spacing">
+      <!-- Hero -->
+      <section class="page-hero container">
+        <div class="animate-fade-up text-center">
            <span class="badge text-uppercase tracking-widest text-cyan mb-2">Bảng Giá</span>
-           <h2 class="gradient-text blue-cyan-gradient title-section">Các Gói Cơ Bản</h2>
-           <p class="subtitle mt-2">Lựa chọn gói dịch vụ phù hợp nhất với nhu cầu và quy mô cộng đồng của bạn.</p>
+           <h1 class="gradient-text title-huge">Các Gói Cơ Bản</h1>
+           <p class="subtitle mt-3 text-center mx-auto" style="max-width: 700px;">Lựa chọn gói dịch vụ phù hợp nhất với nhu cầu và quy mô cộng đồng của bạn.</p>
         </div>
+      </section>
 
+      <!-- Pricing Plans -->
+      <section class="container mb-5 pb-5">
         <div class="pricing-grid mt-5">
            <!-- Basic Bot -->
            <div class="pricing-card glass animate-scale-in">
@@ -87,10 +90,30 @@ onMounted(() => {
 
 <style scoped>
 .app-wrapper { padding-top: 50px; }
+.page-hero {
+  padding: 100px 0 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.badge { 
+  display: inline-block;
+  background: rgba(56, 189, 248, 0.1); 
+  border: 1px solid rgba(56, 189, 248, 0.3); 
+  padding: 8px 20px; 
+  border-radius: 20px; 
+  font-size: 1rem; 
+  font-weight: 600; 
+  color:#22d3ee;
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+}
 .header-spacing { margin-top: 60px; }
-.title-section { font-size: 2.8rem; font-weight: 800; color: #fff; }
+.title-huge { font-size: 3.5rem; font-weight: 800; margin-bottom: 1.5rem; color: #fff; }
 .gradient-text { background: -webkit-linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-.subtitle { color: #94a3b8; font-size: 1.1rem; }
+.subtitle { color: #94a3b8; font-size: 1.15rem; max-width: 700px; margin: 0 auto; line-height: 1.6; }
 
 .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 30px; }
 .pricing-card { display: flex; flex-direction: column; padding: 50px 35px; border-radius: 28px; border: 1px solid rgba(255, 255, 255, 0.05); transition: all 0.4s; position: relative; }
@@ -120,6 +143,6 @@ onMounted(() => {
 
 @media (max-width: 992px) {
   .custom-cta { flex-direction: column; text-align: center; }
-  .title-section { font-size: 2.2rem; }
+  .title-huge { font-size: 2.2rem; }
 }
 </style>
