@@ -107,6 +107,27 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+app.get('/api/auth/setup-admin', async (req, res) => {
+  try {
+    const adminEmail = 'admin@hakkusu.com';
+    const existing = await User.findOne({ email: adminEmail });
+    if (existing) {
+      return res.json({ success: true, message: 'Admin đã tồn tại!', user: { email: adminEmail, password: 'admin123' } });
+    }
+    const admin = new User({
+      name: 'Hakkusu Admin',
+      email: adminEmail,
+      password: 'admin123',
+      role: 'admin',
+      balance: 10000000
+    });
+    await admin.save();
+    res.json({ success: true, message: 'Đã tạo tài khoản Admin thành công!', user: { email: adminEmail, password: 'admin123' } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Lấy thông tin tài khoản bao gồm số dư
 app.get('/api/auth/me', async (req, res) => {
   try {
@@ -189,19 +210,15 @@ app.get('/api/staff/tickets', requireRole(['admin', 'staff']), (req, res) => {
 // -- WEBHOOK TỰ ĐỘNG CỘNG TIỀN (VD: Tích hợp qua SePay webhook) --
 app.post('/api/webhook/bank', async (req, res) => {
   try {
-    // Tùy theo định dạng payload của SePay/Casso/Webhook
-    /* Giả sử định dạng chuẩn của SePay trả về:
-       {
-         "gateway": "Sepay",
-         "transactionDate": "2024-05-12 10:12:34",
-         "accountNumber": "1805...21",
-         "subAccount": "sub...",
-         "transferAmount": 50000,
-         "transferType": "in",
-         "transferContent": "NAP Hax",
-         "referenceCode": "123456"
-       }
-    */
+    // Basic Security: Check custom API Key from SePay Webhook Headers
+    const authHeader = req.headers['authorization'];
+    const expectedToken = process.env.SEPAY_WEBHOOK_TOKEN;
+
+    // Bỏ qua check nếu chưa cài trong .env (chỉ cho dev), nhưng khuyên dùng
+    if (expectedToken && authHeader !== `Apikey ${expectedToken}`) {
+      return res.status(401).json({ success: false, message: 'Unauthorized Webhook' });
+    }
+
     const { transferAmount, transferType, transferContent } = req.body;
 
     // Chỉ sử lý tiền VÀO
